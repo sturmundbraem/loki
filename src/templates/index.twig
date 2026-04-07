@@ -1,0 +1,122 @@
+{% extends "_layouts/cp" %}
+{% import '_includes/forms.twig' as forms %}
+{% set title = "AI Prompts" %}
+
+{% block content %}
+    <form method="post">
+        {{ csrfInput() }}
+        {{ actionInput('stubr-automatisations/prompts/save') }}
+
+        {{ forms.editableTable({
+            id: 'prompts',
+            name: 'prompts',
+            cols: {
+                text: {
+                    heading: 'Prompt',
+                    type: 'singleline',
+                },
+                label: {
+                    heading: 'Label',
+                    type: 'singleline',
+                },
+                provider: {
+                    heading: 'Provider',
+                    type: 'select',
+                    options: [
+                        {label: 'OpenAI', value: 'openai'},
+                        {label: 'Claude', value: 'claude'},
+                        {label: 'DeepL', value: 'deepl'},
+                    ],
+                },
+                allPlainText: {
+                    heading: 'All PlainText',
+                    type: 'checkbox',
+                },
+                allCKEditor: {
+                    heading: 'All CKEditor',
+                    type: 'checkbox',
+                },
+            },
+            rows: prompts,
+            addRowLabel: 'Add prompt',
+            allowAdd: true,
+            allowDelete: true,
+            }) 
+        }}
+
+        <button type="submit" class="btn submit">Save</button>
+
+        <hr>
+        <h2>Field Prompt Assignments</h2>
+
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1; max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+                <h3>Fields</h3>
+                {% for field in allFields %}
+                    <button type="button" class="btn field-select-btn" data-handle="{{ field.handle }}" style="display: block; width: 100%; margin-bottom: 5px; text-align: left;">
+                        {{ field.name }}
+                    </button>
+                {% endfor %}
+            </div>
+
+            <div style="flex: 1; max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+                <h3>Prompts</h3>
+                <div id="prompt-checkboxes">
+                    <p style="color: #999;">Select a field to see its prompts</p>
+                </div>
+                <div id="hidden-assignments"></div>
+            </div>
+        </div>
+    </form>
+
+    <script>
+        var allPrompts = {{ prompts|json_encode|raw }};
+        var fieldAssignments = {{ fieldAssignments|json_encode|raw }};
+
+        document.querySelectorAll('.field-select-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+            var handle = btn.dataset.handle;
+            var container = document.getElementById('prompt-checkboxes');
+            var hiddenContainer = document.getElementById('hidden-assignments');
+            
+            // Save current checkboxes as hidden inputs before switching
+            var currentChecked = container.querySelectorAll('input[type="checkbox"]:checked');
+            var currentField = container.dataset.currentField;
+            if (currentField) {
+                // Remove old hidden inputs for this field
+                var oldHidden = hiddenContainer.querySelectorAll('input[data-field="' + currentField + '"]');
+                oldHidden.forEach(function(el) { el.remove(); });
+                // Save checked values as hidden inputs
+                currentChecked.forEach(function(cb) {
+                    var hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'fieldAssignments[' + currentField + '][]';
+                    hidden.value = cb.value;
+                    hidden.dataset.field = currentField;
+                    hiddenContainer.appendChild(hidden);
+                });
+            }
+            
+            // Track which field is currently shown
+            container.dataset.currentField = handle;
+            
+            // Remove hidden inputs for the field we're about to show (they'll be visible checkboxes now)
+            var existingHidden = hiddenContainer.querySelectorAll('input[data-field="' + handle + '"]');
+            existingHidden.forEach(function(el) { el.remove(); });
+            
+            // Build checkboxes
+            var assigned = fieldAssignments[handle] || [];
+            var html = '';
+            for (var key in allPrompts) {
+                var checked = assigned.indexOf(key) !== -1 ? 'checked' : '';
+                html += '<label style="display:block; margin-bottom:8px;">'
+                    + '<input type="checkbox" name="fieldAssignments[' + handle + '][]" value="' + key + '" ' + checked + '> '
+                    + allPrompts[key].label
+                    + '</label>';
+            }
+            container.innerHTML = html;
+        });
+    });
+
+    </script>
+{% endblock %}
