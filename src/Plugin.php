@@ -43,7 +43,7 @@ class Plugin extends \craft\base\Plugin
         
         // Render the Twig template and pass it the settings + fields data
         return \Craft::$app->getView()->renderTemplate(
-            'stubr-automatisations/settings.twig',
+            'craft-cp-ai/settings.twig',
             [
                 'settings' => $this->getSettings(),
             ]
@@ -55,7 +55,7 @@ class Plugin extends \craft\base\Plugin
     {
         $item = parent::getCpNavItem();
         $item['label'] = 'AI Prompts';
-        $item['url'] = 'stubr-automatisations/prompts';
+        $item['url'] = 'craft-cp-ai/prompts';
         return $item;
     }
 
@@ -68,7 +68,7 @@ class Plugin extends \craft\base\Plugin
             \craft\web\UrlManager::class,
             \craft\web\UrlManager::EVENT_REGISTER_CP_URL_RULES,
             function (\craft\events\RegisterUrlRulesEvent $event) {
-                $event->rules['stubr-automatisations/prompts'] = 'stubr-automatisations/prompts/index';
+                $event->rules['craft-cp-ai/prompts'] = 'craft-cp-ai/prompts/index';
             }
         );
 

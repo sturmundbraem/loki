@@ -2,8 +2,8 @@
 
 This plugin adds AI text generation to Craft CMS 5 Control Panel field editing. It supports multiple LLM providers (OpenAI, Claude, DeepL).
 
-Important: The plugin handle is "stubr-automatisations"
-This handle is needed for cli tasks e.g. migrations `ddev exec php craft migrate/up --plugin=stubr-automatisations`
+Important: The plugin handle is "craft-cp-ai"
+This handle is needed for cli tasks e.g. migrations `ddev exec php craft migrate/up --plugin=craft-cp-ai`
 
 ## Installation
 
@@ -18,7 +18,7 @@ Add the repository to your composer.json
 "repositories":[
     {
         "type": "vcs",
-        "url" : "git@bitbucket.org:stubr/craft-automatisations.git"
+        "url" : "git@github.com:sturmundbraem/craft-cp-ai.git"
     }
 ]
 ```

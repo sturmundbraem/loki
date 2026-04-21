@@ -87,7 +87,7 @@ document.addEventListener('click', function(event) {
             
             menu.remove();
 
-            fetch(Craft.getActionUrl('stubr-automatisations/content/generate'), {
+            fetch(Craft.getActionUrl('craft-cp-ai/content/generate'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

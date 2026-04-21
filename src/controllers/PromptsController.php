@@ -16,7 +16,7 @@ class PromptsController extends Controller{
         $fieldAssignments = $settings->fieldAssignments;
 
 
-        return $this->renderTemplate('stubr-automatisations/index', [
+        return $this->renderTemplate('craft-cp-ai/index', [
             'prompts' => $prompts,
             'allFields' => $allFields,
             'fieldAssignments' => $fieldAssignments,
@@ -40,6 +40,6 @@ class PromptsController extends Controller{
             'fieldAssignments' => $fieldAssignments,
         ]);
 
-        return $this->redirect('stubr-automatisations/prompts');
+        return $this->redirect('craft-cp-ai/prompts');
     }
 }
