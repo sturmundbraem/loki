@@ -23,9 +23,9 @@ Add the repository to your composer.json
 ]
 ```
 
-Run `ddev c require stubr/craft-cp-ai`
+Run `ddev composer require stubr/craft-cp-ai`
 
-Open the panel `ddev launch panel`, go to Settings -> Plugins and Install the Automatisations Plugin.
+Open the panel `ddev launch panel`, go to Settings -> Plugins and Install the Plugin.
 
 ### Environment Variables
 
@@ -55,12 +55,13 @@ Each prompt has:
 
 ### Twig Variables in Prompts
 
-Prompts support Twig variables for dynamic content:
-- `{{siteLang}}` — the current site's language (e.g. "de", "en")
-- `{{fieldHandle}}` — the field handle being edited
-- `{{entryTitle}}` — the entry's title
+Prompts support the following Twig variables for dynamic content
 
-Example: `Translate this text to {{siteLang}}`
+- `{{ siteLang }}` — the current site's language (e.g. "de", "en")
+- `{{ fieldHandle }}` — the field handle being edited
+- `{{ entryTitle }}` — the entry's title
+
+Example: `Translate this text to {{ siteLang }}`
 
 ### Using the Wand Button
 
