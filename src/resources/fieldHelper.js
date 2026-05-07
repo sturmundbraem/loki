@@ -58,9 +58,14 @@ document.addEventListener('click', function(event) {
         for (var promptKey in prompts) {
             var menuItem = document.createElement('button');
             menuItem.type = 'button';              // Prevents form submission
-            menuItem.textContent = prompts[promptKey].label;
+            var labelText = prompts[promptKey].label;
+            if (prompts[promptKey].createDraft === '1') {
+                labelText = labelText + ' (Draft)';
+            }
+            menuItem.textContent = labelText;
             menuItem.dataset.prompt = prompts[promptKey].text;
             menuItem.dataset.provider = prompts[promptKey].provider;
+            menuItem.dataset.createDraft = prompts[promptKey].createDraft;
             menu.appendChild(menuItem);
         }
 
@@ -80,6 +85,7 @@ document.addEventListener('click', function(event) {
             
             var selectedPrompt = item.dataset.prompt;
             var selectedProvider = item.dataset.provider;
+            var selectedCreateDraft = item.dataset.createDraft;
             var entryIdInput = document.querySelector('input[name="elementId"]');
             var siteIdInput = document.querySelector('input[name="siteId"]');
             
@@ -99,7 +105,8 @@ document.addEventListener('click', function(event) {
                     provider: selectedProvider,
                     siteId: siteIdInput.value,
                     fieldHandle: buttonField,
-                    prompt: selectedPrompt
+                    prompt: selectedPrompt,
+                    createDraft: selectedCreateDraft,
                 })
             })
             .then(function(response) { 
@@ -113,10 +120,16 @@ document.addEventListener('click', function(event) {
                 document.querySelectorAll('.ai-wand-btn').forEach(function(b) { b.disabled = false; });
                 if (data.error) {
                     alert('Error: ' + data.error);
-                } else {
+                } else if (data.draftUrl) {
                     Craft.cp.displayNotice('Draft created!');
                     window.location.href = data.draftUrl;
+                } else {
+                    var fieldEl = document.querySelector('[name="fields[' + data.fieldHandle + ']"]');
+                    fieldEl.value = data.generatedContent;
+                    fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    Craft.cp.displayNotice('Field filled — review and save when ready.');
                 }
+
             })
             .catch(function(error) {
                 alert('Error: ' + error.message);

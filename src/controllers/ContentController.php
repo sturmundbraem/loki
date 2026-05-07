@@ -21,6 +21,7 @@ class ContentController extends \craft\web\Controller
         $fieldHandle = Craft::$app->getRequest()->getBodyParam('fieldHandle');       // Which field to fill (e.g. "subtitle")
         $prompt = Craft::$app->getRequest()->getBodyParam('prompt');                 // The AI prompt to use
         $provider = Craft::$app->getRequest()->getBodyParam('provider');            // Read provider from POST data
+        $createDraft = Craft::$app->getRequest()->getBodyParam('createDraft');         
         $settings = Plugin::$plugin->getSettings();
 
         $validPrompts = array_column($settings->prompts, 'text');
@@ -77,22 +78,28 @@ class ContentController extends \craft\web\Controller
         } catch (\Exception $e) {
             return $this->asJson(['error' => $e->getMessage()]);
         }
+        if ($createDraft === '1') {
+            // Create a draft copy of the entry (doesn't affect the live version)
+            $draft = Craft::$app->getDrafts()->createDraft($entry);
 
-        // Create a draft copy of the entry (doesn't affect the live version)
-        $draft = Craft::$app->getDrafts()->createDraft($entry);
+            // Set the AI-generated text on the target field and save the draft
+            $draft->setFieldValue($fieldHandle, $generatedContent);
+            Craft::$app->getElements()->saveElement($draft);
 
-        // Set the AI-generated text on the target field and save the draft
-        $draft->setFieldValue($fieldHandle, $generatedContent);
-        Craft::$app->getElements()->saveElement($draft);
-
-        // Return JSON response to the JS .then() callback
-        return $this->asJson([
-            'draftId' => $draft->draftId,
-            'title' => $draft->title,
-            'generatedContent' => $generatedContent,
-            'fieldHandle' => $fieldHandle,
-            'draftUrl' => $draft->getCpEditUrl()
-        ]);
-
+            // Return JSON response to the JS .then() callback
+            return $this->asJson([
+                'draftId' => $draft->draftId,
+                'title' => $draft->title,
+                'generatedContent' => $generatedContent,
+                'fieldHandle' => $fieldHandle,
+                'draftUrl' => $draft->getCpEditUrl()
+            ]);
+        }       
+        else {
+            return $this->asJson([
+                'generatedContent' => $generatedContent,
+                'fieldHandle' => $fieldHandle,
+            ]);
+        }
     }
 }
