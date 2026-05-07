@@ -100,7 +100,11 @@ class Plugin extends \craft\base\Plugin
 
                 // Get the field's handle (e.g. "subtitle") and type (e.g. "PlainText")
                 $fieldHandle = $event->sender->handle;
-                $fieldType  = (new \ReflectionClass($event->sender))->getShortName();
+                if ($event->sender instanceof \craft\fields\PlainText) {
+                    $fieldType = 'PlainText';
+                } else if ($event->sender instanceof \craft\ckeditor\Field) {
+                    $fieldType = 'CKEditor';
+                }
 
                 // Append a wand button to the field's HTML
                 // data-field: tells JS which field this button belongs to
