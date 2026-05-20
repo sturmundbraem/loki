@@ -7,7 +7,7 @@ use GuzzleHttp\Client;
 
 class DeepLProvider implements LlmProviderInterface
 {
-    public function generateText($prompt, $context, $fieldHandle):string {
+    public function generateText($prompt, $context, $fieldHandle, string $systemPrompt):string {
         $client = new Client();
 
         $apiKey = getenv('DEEPL_API_KEY');

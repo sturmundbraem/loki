@@ -13,11 +13,15 @@
             cols: {
                 text: {
                     heading: 'Prompt',
-                    type: 'singleline',
+                    type: 'multiline',
                 },
                 label: {
                     heading: 'Label',
                     type: 'singleline',
+                },
+                basePrompt: {
+                    heading: 'Base Prompt',
+                    type: 'multiline',
                 },
                 provider: {
                     heading: 'Provider',
@@ -36,6 +40,10 @@
                     heading: 'All CKEditor',
                     type: 'checkbox',
                 },
+                createDraft: {
+                    heading: 'Create Draft',
+                    type: 'checkbox',
+                }
             },
             rows: prompts,
             addRowLabel: 'Add prompt',

@@ -9,7 +9,7 @@ use stubr\services\providers\LlmProviderInterface;
 // Implements the interface so it has the same method signature as all other providers
 class ClaudeProvider implements LlmProviderInterface
 {
-    public function generateText(string $prompt, string $context, string $fieldHandle): string
+    public function generateText(string $prompt, string $context, string $fieldHandle, string $systemPrompt): string
     {
         // Build the full prompt that combines: page context + task + target field
         $fullPrompt = "Here is the content of the page:\n" . $context . "\nTask: " . $prompt . "\nWrite the content for the field: " . $fieldHandle;
@@ -36,6 +36,7 @@ class ClaudeProvider implements LlmProviderInterface
             'json' => [
                 'model' => 'claude-sonnet-4-20250514',
                 'max_tokens' => 1024,
+                'system' => $systemPrompt, 
                 'messages' => [
                     ['role' => 'user', 'content' => $fullPrompt]
                 ]
