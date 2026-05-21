@@ -3,7 +3,7 @@
     flex-direction: column;
     z-index: 100;
     background: white;
-    border: 1px solid #ccc;
+    border: 4px solid #ccc;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
@@ -19,3 +19,37 @@
     z-index: 50;
 }
 
+.ai-prompt-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;   /* title left, × right */
+    padding: 6px 10px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #ccc;
+    border-radius: 4px 4px 0 0;
+    cursor: move;                     /* the 4-way move cursor on hover */
+    user-select: none;                /* don't select text while dragging */
+}
+
+.ai-prompt-menu-title {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.ai-prompt-menu-close {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.ai-prompt-menu-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 140px;       /* scroll past this height */
+    overflow-y: auto;
+    gap: 4px;
+    padding: 13px;
+}

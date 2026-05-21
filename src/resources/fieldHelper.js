@@ -52,9 +52,31 @@ document.addEventListener('click', function(event) {
         var menu = document.createElement('div');
         menu.className = 'ai-prompt-menu';
 
+        var header = document.createElement('div');
+        header.className = 'ai-prompt-menu-header';
+
+        var headerTitle = document.createElement('span');
+        headerTitle.className = 'ai-prompt-menu-title';
+        headerTitle.textContent = buttonField;
+        header.appendChild(headerTitle);
+
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'ai-prompt-menu-close';
+        closeBtn.textContent = 'x';
+        closeBtn.addEventListener('click', function() {
+            menu.remove();
+        })
+        header.appendChild(closeBtn);
+        menu.appendChild(header);
+
         // Loop through each prompt and create a menu button for it
         // key = the label shown to the user (e.g. "summarize")
         // prompts[key] = the actual prompt text sent to the AI
+
+        var list = document.createElement('div');
+        list.className = 'ai-prompt-menu-list';
+
         for (var promptKey in prompts) {
             var menuItem = document.createElement('button');
             menuItem.type = 'button';              // Prevents form submission
@@ -66,9 +88,9 @@ document.addEventListener('click', function(event) {
             menuItem.dataset.prompt = prompts[promptKey].text;
             menuItem.dataset.provider = prompts[promptKey].provider;
             menuItem.dataset.createDraft = prompts[promptKey].createDraft;
-            menu.appendChild(menuItem);
+            list.appendChild(menuItem);
         }
-
+        menu.appendChild(list);
         // Position the dropdown menu right below the wand button
         // getBoundingClientRect() returns the button's position on screen
         var rect = btn.getBoundingClientRect();
@@ -77,7 +99,30 @@ document.addEventListener('click', function(event) {
         menu.style.left = rect.left + 'px';     // Aligned to the button's left edge
         document.body.appendChild(menu);         // Add the menu to the page
 
-        menu.addEventListener('click', function(e) {
+        var isDragging = false;
+        var dragOffsetX = 0;
+        var dragOffsetY = 0;
+
+        header.addEventListener('mousedown', function(e) {
+            if (e.target === closeBtn) return;
+            isDragging = true;
+            var menuRect = menu.getBoundingClientRect();
+            dragOffsetX = e.clientX - menuRect.left;
+            dragOffsetY = e.clientY - menuRect.top;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            menu.style.left = (e.clientX - dragOffsetX) + 'px';
+            menu.style.top = (e.clientY - dragOffsetY) + 'px';
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+
+            list.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             var item = e.target.closest('button');
@@ -155,20 +200,5 @@ document.addEventListener('click', function(event) {
             });
 
         });
-
-
-        // Close the menu when clicking anywhere outside of it
-        // setTimeout with 0ms delays this to the next browser cycle
-        // Without it, the current click (that opened the menu) would immediately close it
-        setTimeout(function() {
-            document.addEventListener('click', function closeMenu(e) {
-                // If the click was NOT inside the menu, close it
-                if (!menu.contains(e.target)) {
-                    menu.remove();
-                    // Remove this listener so it doesn't keep running after menu is gone
-                    document.removeEventListener('click', closeMenu);
-                }
-            });
-        }, 0);
     }
 });

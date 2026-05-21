@@ -56,6 +56,8 @@ class Plugin extends \craft\base\Plugin
         $item = parent::getCpNavItem();
         $item['label'] = 'AI Prompts';
         $item['url'] = 'craft-cp-ai/prompts';
+        unset($item['icon']);
+        $item['fontIcon'] = 'wand-magic-sparkles';
         return $item;
     }
 
