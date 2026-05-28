@@ -154,6 +154,18 @@ document.addEventListener('click', function(event) {
                 document.body.appendChild(overlay);
             }
 
+            // Grab whatever the user has currently typed (not yet saved to DB)
+            var liveValues = {};
+            document.querySelectorAll(
+                'input[name^="fields["], textarea[name^="fields["]'
+            ).forEach(function(el) {
+                var m = el.name.match(/^fields\[([^\]]+)\]$/);
+                if (m) liveValues[m[1]] = el.value;
+            });
+
+            var titleInput = document.querySelector('input[name="title"]');
+            if (titleInput) liveValues.__title = titleInput.value;
+
             fetch(Craft.getActionUrl('craft-cp-ai/content/generate'), {
                 method: 'POST',
                 headers: {
@@ -168,6 +180,7 @@ document.addEventListener('click', function(event) {
                     fieldHandle: buttonField,
                     prompt: selectedPrompt,
                     createDraft: selectedCreateDraft,
+                    liveValues: liveValues,
                 })
             })
             .then(function(response) { 
@@ -187,8 +200,29 @@ document.addEventListener('click', function(event) {
                     window.location.href = data.draftUrl;
                 } else {
                     var fieldEl = document.querySelector('[name="fields[' + data.fieldHandle + ']"]');
-                    fieldEl.value = data.generatedContent;
-                    fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // CKEditor stores its instance on a .ck-editor__editable descendant of the
+                    // field container, not on the textarea. Search inside the field for one that
+                    // actually carries a ckeditorInstance.
+                    var editorInstance = fieldEl.ckeditorInstance;
+                    if (!editorInstance) {
+                        var fieldContainer = fieldEl.closest('.field');
+                        if (fieldContainer) {
+                            fieldContainer.querySelectorAll('.ck-editor__editable').forEach(function(el) {
+                                if (el.ckeditorInstance && !editorInstance) {
+                                    editorInstance = el.ckeditorInstance;
+                                }
+                            });
+                        }
+                    }
+
+                    if (editorInstance) {
+                        editorInstance.setData(data.generatedContent);
+                    } else {
+                        fieldEl.value = data.generatedContent;
+                        fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    
                     Craft.cp.displayNotice('Field filled — review and save when ready.');
                 }
 

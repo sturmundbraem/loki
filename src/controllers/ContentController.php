@@ -19,6 +19,7 @@ class ContentController extends \craft\web\Controller
         $entryId = (int) Craft::$app->getRequest()->getBodyParam('entryId');       // Cast to integer for database lookup
         $siteId = Craft::$app->getRequest()->getBodyParam('siteId');                // Which site/language
         $fieldHandle = Craft::$app->getRequest()->getBodyParam('fieldHandle');       // Which field to fill (e.g. "subtitle")
+        $liveValues = Craft::$app->getRequest()->getBodyParam('liveValues', []);
         $prompt = Craft::$app->getRequest()->getBodyParam('prompt');                 // The AI prompt to use
         $provider = Craft::$app->getRequest()->getBodyParam('provider');            // Read provider from POST data
         $createDraft = Craft::$app->getRequest()->getBodyParam('createDraft');         
@@ -54,6 +55,7 @@ class ContentController extends \craft\web\Controller
             ->id($entryId)
             ->status(null)
             ->one();
+
         
         if (!$entry) {
             return $this->asJson(['error' => 'Entry not found'], 404);
@@ -66,10 +68,11 @@ class ContentController extends \craft\web\Controller
         }
 
         $site = Craft::$app->getSites()->getSiteById($siteId);
+        $entryTitle = $liveValues['__title'] ?? $entry->title;
         $prompt = Craft::$app->getView()->renderString($prompt, [
             'siteLang' => $site->language,
             'fieldHandle' => $fieldHandle,
-            'entryTitle' => $entry->title,
+            'entryTitle' => $entryTitle,
         ]);
 
         $basePrompt = Craft::$app->getView()->renderString($basePrompt, [
@@ -78,12 +81,11 @@ class ContentController extends \craft\web\Controller
             'entryTitle' => $entry->title,
         ]);
 
-        // Build a context string with ALL field values from the entry
-        // This gives the AI the full picture of the page content
         $fieldValues = $entry->getFieldValues();
-        $context = 'Title: ' . $entry->title . "\n";
+        $context = 'Title: ' . $entryTitle . "\n";
         foreach ($fieldValues as $handle => $value) {
-            $context .= $handle . ': ' . $value . "\n";
+            $effective = $liveValues[$handle] ?? (string)$value;
+            $context .= $handle . ': ' . $effective . "\n";
         }
 
         // Call the AI service to generate text
