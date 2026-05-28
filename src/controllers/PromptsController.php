@@ -15,14 +15,12 @@ class PromptsController extends Controller{
         $allFields = Craft::$app->getFields()->getAllFields();
         $fieldAssignments = $settings->fieldAssignments;
 
-
         return $this->renderTemplate('craft-cp-ai/index', [
             'prompts' => $prompts,
             'allFields' => $allFields,
             'fieldAssignments' => $fieldAssignments,
-
+            'settings' => $settings,
         ]);
-
     }
 
     public function actionSave(){
@@ -35,9 +33,12 @@ class PromptsController extends Controller{
         $settings = Plugin::$plugin->getSettings();
         $settings->prompts = $prompts;
 
+        $basePrompt = $request->getBodyParam('basePrompt', '');
+
         Craft::$app->getPlugins()->savePluginSettings(Plugin::$plugin, [
             'prompts' => $prompts,
             'fieldAssignments' => $fieldAssignments,
+            'basePrompt' => $basePrompt,
         ]);
 
         return $this->redirect('craft-cp-ai/prompts');

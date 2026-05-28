@@ -39,7 +39,7 @@ class ContentController extends \craft\web\Controller
         if ($matchedPrompt === null) {
             return $this->asJson(['error' => 'Invalid prompt'], 400);
         }
-        $basePrompt = $matchedPrompt['basePrompt'] ?? '';
+        $basePrompt = $settings->basePrompt ?? '';
 
         $allowedProviders = ['openai', 'claude', 'deepl'];
         if (!in_array($provider, $allowedProviders)) {

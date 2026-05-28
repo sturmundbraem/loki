@@ -7,6 +7,17 @@
         {{ csrfInput() }}
         {{ actionInput('craft-cp-ai/prompts/save') }}
 
+        <div style="margin-bottom: 20px;">
+            {{ forms.textareaField({
+                label: 'System Prompt',
+                instructions: 'Sent as the AI\'s system role. Supports Twig variables like {{ "{{siteLang}}" }}.',
+                id: 'basePrompt',
+                name: 'basePrompt',
+                rows: 6,
+                value: settings.basePrompt,
+            }) }}
+        </div>
+
         {{ forms.editableTable({
             id: 'prompts',
             name: 'prompts',
@@ -18,11 +29,7 @@
                 label: {
                     heading: 'Label',
                     type: 'singleline',
-                },
-                basePrompt: {
-                    heading: 'Base Prompt',
-                    type: 'multiline',
-                },
+                },               
                 provider: {
                     heading: 'Provider',
                     type: 'select',
