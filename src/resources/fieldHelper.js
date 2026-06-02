@@ -1,3 +1,41 @@
+// --- Position wand buttons (handles both initial load and AJAX-injected fields) ---
+function positionWandButton(btn) {
+    if (btn.dataset.positioned === '1') return;     // skip already-placed buttons
+    var field = btn.closest('.field');
+    if (!field) return;
+    var heading = field.querySelector('.heading .flex-grow');
+    if (!heading) return;                            // some fields have a different heading layout — skip
+    heading.before(btn);
+    btn.style.display = '';
+    btn.dataset.positioned = '1';
+}
+
+function positionAllWands(root) {
+    (root || document).querySelectorAll('.ai-wand-btn').forEach(positionWandButton);
+}
+
+// Position any wand buttons already in the DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { positionAllWands(); });
+} else {
+    positionAllWands();
+}
+
+// Watch for new wand buttons added later (Matrix blocks, etc.)
+new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+            if (node.nodeType !== 1) return;                            // only Element nodes
+            if (node.matches && node.matches('.ai-wand-btn')) {
+                positionWandButton(node);
+            } else if (node.querySelectorAll) {
+                node.querySelectorAll('.ai-wand-btn').forEach(positionWandButton);
+            }
+        });
+    });
+}).observe(document.body, { childList: true, subtree: true });
+
+
 // Listen for all clicks on the page
 // We use event delegation: one listener on the whole document
 // instead of adding listeners to each button individually
@@ -52,9 +90,31 @@ document.addEventListener('click', function(event) {
         var menu = document.createElement('div');
         menu.className = 'ai-prompt-menu';
 
+        var header = document.createElement('div');
+        header.className = 'ai-prompt-menu-header';
+
+        var headerTitle = document.createElement('span');
+        headerTitle.className = 'ai-prompt-menu-title';
+        headerTitle.textContent = buttonField;
+        header.appendChild(headerTitle);
+
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'ai-prompt-menu-close';
+        closeBtn.textContent = 'x';
+        closeBtn.addEventListener('click', function() {
+            menu.remove();
+        })
+        header.appendChild(closeBtn);
+        menu.appendChild(header);
+
         // Loop through each prompt and create a menu button for it
         // key = the label shown to the user (e.g. "summarize")
         // prompts[key] = the actual prompt text sent to the AI
+
+        var list = document.createElement('div');
+        list.className = 'ai-prompt-menu-list';
+
         for (var promptKey in prompts) {
             var menuItem = document.createElement('button');
             menuItem.type = 'button';              // Prevents form submission
@@ -66,9 +126,9 @@ document.addEventListener('click', function(event) {
             menuItem.dataset.prompt = prompts[promptKey].text;
             menuItem.dataset.provider = prompts[promptKey].provider;
             menuItem.dataset.createDraft = prompts[promptKey].createDraft;
-            menu.appendChild(menuItem);
+            list.appendChild(menuItem);
         }
-
+        menu.appendChild(list);
         // Position the dropdown menu right below the wand button
         // getBoundingClientRect() returns the button's position on screen
         var rect = btn.getBoundingClientRect();
@@ -77,7 +137,30 @@ document.addEventListener('click', function(event) {
         menu.style.left = rect.left + 'px';     // Aligned to the button's left edge
         document.body.appendChild(menu);         // Add the menu to the page
 
-        menu.addEventListener('click', function(e) {
+        var isDragging = false;
+        var dragOffsetX = 0;
+        var dragOffsetY = 0;
+
+        header.addEventListener('mousedown', function(e) {
+            if (e.target === closeBtn) return;
+            isDragging = true;
+            var menuRect = menu.getBoundingClientRect();
+            dragOffsetX = e.clientX - menuRect.left;
+            dragOffsetY = e.clientY - menuRect.top;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            menu.style.left = (e.clientX - dragOffsetX) + 'px';
+            menu.style.top = (e.clientY - dragOffsetY) + 'px';
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+
+            list.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             var item = e.target.closest('button');
@@ -86,12 +169,41 @@ document.addEventListener('click', function(event) {
             var selectedPrompt = item.dataset.prompt;
             var selectedProvider = item.dataset.provider;
             var selectedCreateDraft = item.dataset.createDraft;
-            var entryIdInput = document.querySelector('input[name="elementId"]');
-            var siteIdInput = document.querySelector('input[name="siteId"]');
-            
+            var wandForm = btn.closest('form');
+            var entryIdInput = wandForm.querySelector('input[name="elementId"], input[name$="[elementId]"]');
+            var siteIdInput  = wandForm.querySelector('input[name="siteId"], input[name$="[siteId]"]');
+
             document.querySelectorAll('.ai-wand-btn').forEach(function(b) { b.disabled = true; });
             
             menu.remove();
+
+            // Show a loading spinner over the target field while we wait for the AI.
+            // Find the field container, then float a fixed-position overlay over it.
+            var loadingField = btn.closest('.field');
+            var overlay = document.createElement('div');
+            overlay.className = 'ai-loading-overlay';
+            overlay.innerHTML = '<div class="spinner"></div>';
+            if (loadingField) {
+                var fieldRect = loadingField.getBoundingClientRect();
+                overlay.style.position = 'fixed';
+                overlay.style.top = fieldRect.top + 'px';
+                overlay.style.left = fieldRect.left + 'px';
+                overlay.style.width = fieldRect.width + 'px';
+                overlay.style.height = fieldRect.height + 'px';
+                document.body.appendChild(overlay);
+            }
+            var liveValues = {};   
+            // Grab whatever the user has currently typed (not yet saved to DB)
+            wandForm.querySelectorAll(
+                'input[name*="[fields]["], textarea[name*="[fields]["], input[name^="fields["], textarea[name^="fields["]'
+            ).forEach(function(el) {
+                // Catches both top-level `fields[handle]` and namespaced `xxxx[fields][handle]`
+                var m = el.name.match(/(?:^|[\[\]])fields\[([^\]]+)\]/);
+                if (m) liveValues[m[1]] = el.value;
+            });
+
+            var titleInput = wandForm.querySelector('input[name="title"], input[name$="[title]"]');
+            if (titleInput) liveValues.__title = titleInput.value;
 
             fetch(Craft.getActionUrl('craft-cp-ai/content/generate'), {
                 method: 'POST',
@@ -107,6 +219,7 @@ document.addEventListener('click', function(event) {
                     fieldHandle: buttonField,
                     prompt: selectedPrompt,
                     createDraft: selectedCreateDraft,
+                    liveValues: liveValues,
                 })
             })
             .then(function(response) { 
@@ -117,6 +230,7 @@ document.addEventListener('click', function(event) {
             })
 
             .then(function(data) {
+                overlay.remove();
                 document.querySelectorAll('.ai-wand-btn').forEach(function(b) { b.disabled = false; });
                 if (data.error) {
                     alert('Error: ' + data.error);
@@ -124,32 +238,41 @@ document.addEventListener('click', function(event) {
                     Craft.cp.displayNotice('Draft created!');
                     window.location.href = data.draftUrl;
                 } else {
-                    var fieldEl = document.querySelector('[name="fields[' + data.fieldHandle + ']"]');
-                    fieldEl.value = data.generatedContent;
-                    fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    var fieldEl = wandForm.querySelector('[name="fields[' + data.fieldHandle + ']"], [name$="[fields][' + data.fieldHandle + ']"]');
+
+                    // CKEditor stores its instance on a .ck-editor__editable descendant of the
+                    // field container, not on the textarea. Search inside the field for one that
+                    // actually carries a ckeditorInstance.
+                    var editorInstance = fieldEl.ckeditorInstance;
+                    if (!editorInstance) {
+                        var fieldContainer = fieldEl.closest('.field');
+                        if (fieldContainer) {
+                            fieldContainer.querySelectorAll('.ck-editor__editable').forEach(function(el) {
+                                if (el.ckeditorInstance && !editorInstance) {
+                                    editorInstance = el.ckeditorInstance;
+                                }
+                            });
+                        }
+                    }
+
+                    if (editorInstance) {
+                        editorInstance.setData(data.generatedContent);
+                    } else {
+                        fieldEl.value = data.generatedContent;
+                        fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    
                     Craft.cp.displayNotice('Field filled — review and save when ready.');
                 }
 
             })
             .catch(function(error) {
+                overlay.remove();
+                document.querySelectorAll('.ai-wand-btn').forEach(function(b) { b.disabled = false; });
                 alert('Error: ' + error.message);
             });
 
         });
-
-
-        // Close the menu when clicking anywhere outside of it
-        // setTimeout with 0ms delays this to the next browser cycle
-        // Without it, the current click (that opened the menu) would immediately close it
-        setTimeout(function() {
-            document.addEventListener('click', function closeMenu(e) {
-                // If the click was NOT inside the menu, close it
-                if (!menu.contains(e.target)) {
-                    menu.remove();
-                    // Remove this listener so it doesn't keep running after menu is gone
-                    document.removeEventListener('click', closeMenu);
-                }
-            });
-        }, 0);
     }
 });
+

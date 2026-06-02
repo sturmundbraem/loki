@@ -4,12 +4,14 @@ namespace stubr\services\providers;
 
 use GuzzleHttp\Client;
 use stubr\services\providers\LlmProviderInterface;
+use craft\helpers\App;
+use stubr\Plugin;
 
 // Handles communication with the OpenAI (ChatGPT) API
 // Implements the interface so it has the same method signature as all other providers
 class OpenAiProvider implements LlmProviderInterface
 {
-    public function generateText(string $prompt, string $context, string $fieldHandle): string
+    public function generateText(string $prompt, string $context, string $fieldHandle, string $systemPrompt): string
     {
         // Build the full prompt that combines: page context + task + target field
         $fullPrompt = "Here is the content of the page:\n" . $context . "\nTask: " . $prompt . "\nWrite the content for the field: " . $fieldHandle;
@@ -20,11 +22,10 @@ class OpenAiProvider implements LlmProviderInterface
         $client = new Client();
 
         // Read the API key from the .env file — NEVER hardcode API keys!
-        $apiKey = getenv('OPENAI_API_KEY');
+        $apiKey = App::parseEnv(Plugin::$plugin->getSettings()->openaiApiKey);
         if (!$apiKey) {
-            throw new \Exception('OPENAI_API_KEY not set in .env');
+            throw new \Exception('OpenAI API key not configured');
         }
-
 
         // Send a POST request to OpenAI's chat completions endpoint
         try {
@@ -34,9 +35,10 @@ class OpenAiProvider implements LlmProviderInterface
                     'Content-Type' => 'application/json',       // Tell OpenAI we're sending JSON
                 ],
                 'json' => [                                     // The request body (automatically encoded to JSON by Guzzle)
-                    'model' => 'gpt-4o-mini',                   // Which AI model to use
+                    'model' => 'gpt-4o-mini',                // Which AI model to use
                     'messages' => [
-                        ['role' => 'user', 'content' => $fullPrompt]   // The prompt we send to the AI
+                        ['role' => 'system', 'content' => $systemPrompt],
+                        ['role' => 'user', 'content' => $fullPrompt]  // The prompt we send to the AI
                     ]
                 ]
             ]);

@@ -18,7 +18,8 @@ Add the repository to your composer.json
 "repositories":[
     {
         "type": "vcs",
-        "url" : "git@github.com:sturmundbraem/craft-cp-ai.git"
+        "url" : "git@github.com:sturmundbraem/craft-cp-ai.git",
+        "no-api": true
     }
 ]
 ```
@@ -27,15 +28,12 @@ Run `ddev composer require stubr/craft-cp-ai`
 
 Open the panel `ddev launch panel`, go to Settings -> Plugins and Install the Plugin.
 
-### Environment Variables
+### APIs
 
-Add the following API keys to your `.env` file (only the providers you plan to use):
+API keys can be set in two ways:
 
-```
-OPENAI_API_KEY=sk-...
-CLAUDE_API_KEY=sk-ant-...
-DEEPL_API_KEY=...
-```
+1. Plugin Settings page (Settings → Plugins → Craft CP AI) — paste keys directly into the form, or reference an environment variable by typing $OPENAI_API_KEY (the field will autosuggest available env vars from your .env).
+2. .env file — set OPENAI_API_KEY=sk-..., CLAUDE_API_KEY=sk-ant-..., DEEPL_API_KEY=... and reference them as $OPENAI_API_KEY etc. in the Settings page.
 
 ## Usage
 
@@ -47,6 +45,7 @@ Go to the "AI Prompts" section in the CP sidebar. Here you can:
 - Set which LLM provider each prompt uses (OpenAI, Claude, DeepL)
 - Check "All PlainText" or "All CKEditor" to make a prompt available on all fields of that type
 - Assign specific prompts to specific fields using the Field Prompt Assignments panel
+- Add a general Base Prompt, that tells the AI how to generate text: the tone, structure, etc for all other prompts.
 
 Each prompt has:
 - **Label** — short name shown in the dropdown (e.g. "Summarize")

@@ -4,15 +4,17 @@ namespace stubr\services\providers;
 
 use stubr\services\providers\LlmProviderInterface;
 use GuzzleHttp\Client;
+use craft\helpers\App;
+use stubr\Plugin;
 
 class DeepLProvider implements LlmProviderInterface
 {
-    public function generateText($prompt, $context, $fieldHandle):string {
+    public function generateText($prompt, $context, $fieldHandle, string $systemPrompt):string {
         $client = new Client();
 
-        $apiKey = getenv('DEEPL_API_KEY');
+        $apiKey = App::parseEnv(Plugin::$plugin->getSettings()->deeplApiKey);
         if (!$apiKey) {
-            throw new \Exception('DEEPL API is not set in .env');
+            throw new \Exception('DeepL API key not configured');
         }
 
         $parts = explode(' ', trim($prompt));

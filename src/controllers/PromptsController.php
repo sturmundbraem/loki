@@ -15,14 +15,12 @@ class PromptsController extends Controller{
         $allFields = Craft::$app->getFields()->getAllFields();
         $fieldAssignments = $settings->fieldAssignments;
 
-
         return $this->renderTemplate('craft-cp-ai/index', [
             'prompts' => $prompts,
             'allFields' => $allFields,
             'fieldAssignments' => $fieldAssignments,
-
+            'settings' => $settings,
         ]);
-
     }
 
     public function actionSave(){

@@ -56,6 +56,14 @@ class Plugin extends \craft\base\Plugin
         $item = parent::getCpNavItem();
         $item['label'] = 'AI Prompts';
         $item['url'] = 'craft-cp-ai/prompts';
+        unset($item['icon']);
+        $item['fontIcon'] = 'wand-magic-sparkles';
+
+        $item['subnav'] = [
+            'prompts' => ['label' => 'Prompts', 'url' => 'craft-cp-ai/prompts'],
+            'settings' => ['label' => 'Settings', 'url' => 'settings/plugins/craft-cp-ai'],
+        ]; 
+        
         return $item;
     }
 
@@ -110,22 +118,7 @@ class Plugin extends \craft\base\Plugin
                 // data-field: tells JS which field this button belongs to
                 // data-type: tells JS the field type (for picking the right prompts)
                 // style="display:none": hidden initially, the inline script moves it to the right place
-                $event->html .= '
-                <button type="button" class="ai-wand-btn btn small icon" data-icon="wand-magic-sparkles" data-field="' . $fieldHandle . '" data-type="' . $fieldType . '" style="display:none"></button>
-
-                <script>
-                    (function() {
-                        // Find THIS field\'s wand button and move it into the heading area
-                        // (next to the field label) instead of below the input
-                        const btn = document.querySelector(\'button.ai-wand-btn[data-field="' . $fieldHandle . '"]\');
-                        const field = btn.closest(".field");
-                        const heading = field.querySelector(".heading .flex-grow");
-                        if (heading) {
-                            heading.before(btn);
-                            btn.style.display = "";
-                        }
-                    })();
-                </script>';
+                $event->html .= '<button type="button" class="ai-wand-btn btn small icon" data-icon="wand-magic-sparkles" data-field="' . $fieldHandle . '" data-type="' . $fieldType . '" style="display:none"></button>';
                 }
             }
         );

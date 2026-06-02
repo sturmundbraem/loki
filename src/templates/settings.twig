@@ -1,1 +1,37 @@
 {% import '_includes/forms.twig' as forms %}
+
+{{ forms.textareaField({
+    label: 'System Prompt',
+    instructions: 'Sent to the AI as the system role. Supports Twig variables like {{ "{{siteLang}}" }} and {{ "{{entryTitle}}" }}.',
+    id: 'basePrompt',
+    name: 'basePrompt',
+    rows: 8,
+    value: settings.basePrompt,
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'OpenAI API Key',
+    instructions: 'Either paste your OpenAI key directly, or reference an environment variable like $OPENAI_API_KEY.',
+    id: 'openaiApiKey',
+    name: 'openaiApiKey',
+    value: settings.openaiApiKey,
+    suggestEnvVars: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Claude API Key',
+    instructions: 'Either paste your Claude key directly, or reference an environment variable like $CLAUDE_API_KEY.',
+    id: 'claudeApiKey',
+    name: 'claudeApiKey',
+    value: settings.claudeApiKey,
+    suggestEnvVars: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'DeepL API Key',
+    instructions: 'Either paste your DeepL key directly, or reference an environment variable like $DEEPL_API_KEY.',
+    id: 'deeplApiKey',
+    name: 'deeplApiKey',
+    value: settings.deeplApiKey,
+    suggestEnvVars: true,
+}) }}

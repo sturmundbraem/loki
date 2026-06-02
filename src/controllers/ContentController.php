@@ -19,15 +19,27 @@ class ContentController extends \craft\web\Controller
         $entryId = (int) Craft::$app->getRequest()->getBodyParam('entryId');       // Cast to integer for database lookup
         $siteId = Craft::$app->getRequest()->getBodyParam('siteId');                // Which site/language
         $fieldHandle = Craft::$app->getRequest()->getBodyParam('fieldHandle');       // Which field to fill (e.g. "subtitle")
+        $liveValues = Craft::$app->getRequest()->getBodyParam('liveValues', []);
         $prompt = Craft::$app->getRequest()->getBodyParam('prompt');                 // The AI prompt to use
         $provider = Craft::$app->getRequest()->getBodyParam('provider');            // Read provider from POST data
         $createDraft = Craft::$app->getRequest()->getBodyParam('createDraft');         
         $settings = Plugin::$plugin->getSettings();
 
-        $validPrompts = array_column($settings->prompts, 'text');
-        if (!in_array($prompt, $validPrompts)) {
+        // $validPrompts = array_column($settings->prompts, 'text');
+        // if (!in_array($prompt, $validPrompts)) {
+        //     return $this->asJson(['error' => 'Invalid prompt'], 400);
+        // }
+        $matchedPrompt = null;
+        foreach ($settings->prompts as $p) {
+            if ($p['text'] === $prompt) {
+                $matchedPrompt = $p;
+                break;
+            }
+        }
+        if ($matchedPrompt === null) {
             return $this->asJson(['error' => 'Invalid prompt'], 400);
         }
+        $basePrompt = $settings->basePrompt ?? '';
 
         $allowedProviders = ['openai', 'claude', 'deepl'];
         if (!in_array($provider, $allowedProviders)) {
@@ -43,6 +55,7 @@ class ContentController extends \craft\web\Controller
             ->id($entryId)
             ->status(null)
             ->one();
+
         
         if (!$entry) {
             return $this->asJson(['error' => 'Entry not found'], 404);
@@ -55,18 +68,24 @@ class ContentController extends \craft\web\Controller
         }
 
         $site = Craft::$app->getSites()->getSiteById($siteId);
+        $entryTitle = $liveValues['__title'] ?? $entry->title;
         $prompt = Craft::$app->getView()->renderString($prompt, [
+            'siteLang' => $site->language,
+            'fieldHandle' => $fieldHandle,
+            'entryTitle' => $entryTitle,
+        ]);
+
+        $basePrompt = Craft::$app->getView()->renderString($basePrompt, [
             'siteLang' => $site->language,
             'fieldHandle' => $fieldHandle,
             'entryTitle' => $entry->title,
         ]);
 
-        // Build a context string with ALL field values from the entry
-        // This gives the AI the full picture of the page content
         $fieldValues = $entry->getFieldValues();
-        $context = 'Title: ' . $entry->title . "\n";
+        $context = 'Title: ' . $entryTitle . "\n";
         foreach ($fieldValues as $handle => $value) {
-            $context .= $handle . ': ' . $value . "\n";
+            $effective = $liveValues[$handle] ?? (string)$value;
+            $context .= $handle . ': ' . $effective . "\n";
         }
 
         // Call the AI service to generate text
@@ -74,7 +93,7 @@ class ContentController extends \craft\web\Controller
         $aiService = new AIService();
         
         try {
-            $generatedContent = $aiService->generateContent($prompt, $context, $fieldHandle, $provider);
+            $generatedContent = $aiService->generateContent($prompt, $context, $fieldHandle, $provider, $basePrompt);
         } catch (\Exception $e) {
             return $this->asJson(['error' => $e->getMessage()]);
         }
@@ -82,9 +101,24 @@ class ContentController extends \craft\web\Controller
             // Create a draft copy of the entry (doesn't affect the live version)
             $draft = Craft::$app->getDrafts()->createDraft($entry);
 
-            // Set the AI-generated text on the target field and save the draft
+            // Carry the user's unsaved edits into the draft so nothing they typed is lost
+            foreach ($liveValues as $handle => $value) {
+                if ($handle === '__title') {
+                    $draft->title = $value;
+                    continue;
+                }
+                // Skip anything that isn't a real field on this entry (defensive)
+                if (!$draft->getFieldLayout()->getFieldByHandle($handle)) {
+                    continue;
+                }
+                $draft->setFieldValue($handle, $value);
+            }
+
+            // Now write the AI-generated text into the target field (overrides any live value for it)
             $draft->setFieldValue($fieldHandle, $generatedContent);
+
             Craft::$app->getElements()->saveElement($draft);
+
 
             // Return JSON response to the JS .then() callback
             return $this->asJson([
