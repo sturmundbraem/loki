@@ -1,16 +1,24 @@
 {
   "name": "stubr/craft-cp-ai",
-  "description": "The automatisations is a field type which allows to show a specified list of assets on the website for downloading.",
+  "description": "This plugin adds AI text generation to Craft CMS 5 Control Panel field editing. It supports multiple LLM providers (OpenAI, Anthropic, DeepL).",
   "type": "craft-plugin",
-  "keywords": ["sturmundbraem", "stubr", "automatisations", "documents", "assets"],
+  "keywords": ["ai", "craft", "cp", "helpers", "claude", "chatgpt", "deepl"],
   "authors": [
     {
       "name": "Bohdan Valeshynskyi",
       "homepage": "https://www.sturmundbraem.ch"
+    },
+    {
+      "name": "Aram Loosman",
+      "homepage": "https://www.sturmundbraem.ch"
+    },
+    {
+      "name": "Urs Bräm",
+      "homepage": "https://www.sturmundbraem.ch"
     }
   ],
   "support": {
-    "email": "support@sturmundbraem.ch"
+    "email": "suppor@sturmundbraem.ch"
   },
   "require": {
     "craftcms/cms": "^4.0.0 || ^5.0.0"
