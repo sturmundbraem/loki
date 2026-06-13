@@ -2,25 +2,34 @@
 {% import '_includes/forms.twig' as forms %}
 {% set title = "AI Prompts" %}
 
-{% block content %}
-    <form method="post">
-        {{ csrfInput() }}
-        {{ actionInput('craft-cp-ai/prompts/save') }}
+{% block actionButton %}
+    <button type="submit" class="btn submit" form="prompts-form">Save prompt settings</button>
+{% endblock %}
 
+{% block content %}
+    <form method="post" id="prompts-form">
+        {{ csrfInput() }}
+        {{ actionInput('loki/prompts/save') }}
+        <h2>Define your custom AI prompts</h2>
         {{ forms.editableTable({
             id: 'prompts',
             name: 'prompts',
             cols: {
+                uid: {
+                    heading: '',
+                    type: 'singleline',
+                    class: 'uid-col',
+                },
                 text: {
-                    heading: 'Prompt',
+                    heading: 'PROMPT',
                     type: 'multiline',
                 },
                 label: {
-                    heading: 'Label',
+                    heading: 'LABEL',
                     type: 'singleline',
                 },               
                 provider: {
-                    heading: 'Provider',
+                    heading: 'PROVIDER',
                     type: 'select',
                     options: [
                         {label: 'OpenAI', value: 'openai'},
@@ -28,41 +37,48 @@
                         {label: 'DeepL', value: 'deepl'},
                     ],
                 },
-                allPlainText: {
-                    heading: 'All PlainText',
-                    type: 'checkbox',
-                },
-                allCKEditor: {
-                    heading: 'All CKEditor',
-                    type: 'checkbox',
-                },
                 createDraft: {
-                    heading: 'Create Draft',
+                    heading: 'CREATE DRAFT',
                     type: 'checkbox',
                 }
             },
             rows: prompts,
-            addRowLabel: 'Add prompt',
+            addRowLabel: 'ADD PROMPT',
             allowAdd: true,
             allowDelete: true,
+            allowReorder: true, 
             }) 
         }}
 
         <hr>
-        <h2>Field Prompt Assignments</h2>
+        <h2>Assign prompts to fields</h2>
 
         <div style="display: flex; gap: 20px;">
-            <div style="flex: 1; max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                <h3>Fields</h3>
+            <div style="flex: 1; border: 1px solid #ccc; border-`dding: 10px;">
+                <h6>Fields</h6>
+
+                <button type="button" class="btn field-select-btn" data-handle="__allPlainText" style="display:block; width: 100%; margin-bottom: 5px; text-align: left;">
+                    All Plaintext fields
+                </button>
+
+                <button type="button" class="btn field-select-btn" data-handle="__allCKEditor" style="display:block; width: 100%; margin-bottom: 5px; text-align: left;">
+                    All Richtext fields
+                </button>
+
                 {% for field in allFields %}
-                    <button type="button" class="btn field-select-btn" data-handle="{{ field.handle }}" style="display: block; width: 100%; margin-bottom: 5px; text-align: left;">
-                        {{ field.name }}
-                    </button>
+                    <div class="field-list-item" style="display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
+                        <a class="move icon" title="Reorder"></a>
+                        <button type="button" class="btn field-select-btn"
+                                data-handle="{{ field.handle }}"
+                                style="flex: 1; text-align: left;">
+                            {{ field.name }}
+                        </button>
+                    </div>
                 {% endfor %}
             </div>
 
-            <div style="flex: 1; max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                <h3>Prompts</h3>
+            <div style="flex: 1; border: 1px solid #ccc; border-radius: 5px; padding: 10px;">
+                <h6>Prompts</h6>
                 <div id="prompt-checkboxes">
                     <p style="color: #999;">Select a field to see its prompts</p>
                 </div>
@@ -70,17 +86,31 @@
             </div>
         </div>
 
-    <hr>
-    <button type="submit" class="btn submit">Save</button>
+    <input type="hidden" id="field-order-input" name="fieldOrder" value="">
 
     </form>
 
     <script>
-        var allPrompts = {{ prompts|json_encode|raw }};
+        function readLivePrompts() {
+            var list = [];
+            document.querySelectorAll('#prompts > tbody > tr').forEach(function(tr) {
+                var uidInput = tr.querySelector('.uid-col textarea');
+                var labelInput = tr.querySelector('textarea[name$="[label]"]');
+                if (uidInput && uidInput.value && labelInput) {
+                    list.push({ uid: uidInput.value, label: labelInput.value });
+                }
+            });
+            return list;
+        }
+
+        var allPrompts = {{ promptsByUid|json_encode|raw }};
         var fieldAssignments = {{ fieldAssignments|json_encode|raw }};
 
         document.querySelectorAll('.field-select-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
+            document.querySelectorAll('.field-select-btn').forEach(function(b) { b.classList.remove('is-selected'); });
+            btn.classList.add('is-selected');
+
             var handle = btn.dataset.handle;
             var container = document.getElementById('prompt-checkboxes');
             var hiddenContainer = document.getElementById('hidden-assignments');
@@ -89,20 +119,29 @@
             var currentChecked = container.querySelectorAll('input[type="checkbox"]:checked');
             var currentField = container.dataset.currentField;
             if (currentField) {
-                // Remove old hidden inputs for this field
                 var oldHidden = hiddenContainer.querySelectorAll('input[data-field="' + currentField + '"]');
                 oldHidden.forEach(function(el) { el.remove(); });
-                // Save checked values as hidden inputs
+
+                // Pick the POST name based on what's currently shown
+                var inputName;
+                if (currentField === '__allPlainText') {
+                    inputName = 'bucketAssignments[allPlainText][]';
+                } else if (currentField === '__allCKEditor') {
+                    inputName = 'bucketAssignments[allCKEditor][]';
+                } else {
+                    inputName = 'fieldAssignments[' + currentField + '][]';
+                }
+
                 currentChecked.forEach(function(cb) {
                     var hidden = document.createElement('input');
                     hidden.type = 'hidden';
-                    hidden.name = 'fieldAssignments[' + currentField + '][]';
+                    hidden.name = inputName;
                     hidden.value = cb.value;
                     hidden.dataset.field = currentField;
                     hiddenContainer.appendChild(hidden);
                 });
             }
-            
+
             // Track which field is currently shown
             container.dataset.currentField = handle;
             
@@ -110,19 +149,71 @@
             var existingHidden = hiddenContainer.querySelectorAll('input[data-field="' + handle + '"]');
             existingHidden.forEach(function(el) { el.remove(); });
             
-            // Build checkboxes
-            var assigned = fieldAssignments[handle] || [];
-            var html = '';
-            for (var key in allPrompts) {
-                var checked = assigned.indexOf(key) !== -1 ? 'checked' : '';
-                html += '<label style="display:block; margin-bottom:8px;">'
-                    + '<input type="checkbox" name="fieldAssignments[' + handle + '][]" value="' + key + '" ' + checked + '> '
-                    + allPrompts[key].label
-                    + '</label>';
+            // Decide what to read (initial state) and what to write (input name)
+            var isChecked, inputName;
+            if (handle === '__allPlainText') {
+                isChecked = function(key) { return allPrompts[key] && allPrompts[key].allPlainText === '1'; };
+                inputName = 'bucketAssignments[allPlainText][]';
+            } else if (handle === '__allCKEditor') {
+                isChecked = function(key) { return allPrompts[key] && allPrompts[key].allCKEditor === '1'; };
+                inputName = 'bucketAssignments[allCKEditor][]';
+            } else {
+                var assigned = fieldAssignments[handle] || [];
+                isChecked = function(key) { return assigned.indexOf(key) !== -1; };
+                inputName = 'fieldAssignments[' + handle + '][]';
             }
+
+            var html = '';
+            readLivePrompts().forEach(function(prompt) {
+                var checked = isChecked(prompt.uid) ? 'checked' : '';
+                html += '<label style="display:block; margin-bottom:8px;">'
+                    + '<input type="checkbox" name="' + inputName + '" value="' + prompt.uid + '" ' + checked + '> '
+                    + (prompt.label || '(unnamed)')
+                    + '</label>';
+            });
             container.innerHTML = html;
         });
     });
 
     </script>
+
+    {% js %}
+        function serializeFieldOrder() {
+            var handles = [];
+            document.querySelectorAll('.field-list-item .field-select-btn').forEach(function(btn) {
+                handles.push(btn.dataset.handle);
+            });
+            document.getElementById('field-order-input').value = JSON.stringify(handles);
+        }
+
+        serializeFieldOrder();   // pre-populate so a save without dragging still works
+
+        new Garnish.DragSort($('.field-list-item'), {
+            handle: '.move',
+            axis: Garnish.Y_AXIS,
+        });
+
+        new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType !== 1 || node.tagName !== 'TR') return;
+                    var uidInput = node.querySelector('.uid-col textarea, .uid-col input');
+                    if (uidInput && !uidInput.value) {
+                        uidInput.value = Craft.uuid();
+                    }
+                });
+            });
+        }).observe(document.querySelector('#prompts tbody'), { childList: true });
+
+        document.getElementById('prompts-form').addEventListener('submit', serializeFieldOrder);
+    {% endjs %}
+
+    <style>
+    .field-select-btn.is-selected {
+        background-color: var(--gray-200);
+        font-weight: bold;
+    }
+    .uid-col { display: none; }
+    </style>
+
 {% endblock %}

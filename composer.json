@@ -1,24 +1,16 @@
 {
-  "name": "stubr/craft-cp-ai",
-  "description": "This plugin adds AI text generation to Craft CMS 5 Control Panel field editing. It supports multiple LLM providers (OpenAI, Anthropic, DeepL).",
+  "name": "stubr/loki",
+  "description": "Your lowkey ai trickster for the Craft CMS 5 Control Panel. Adds AI text generation to field editing, and supports multiple LLM providers (OpenAI, Anthropic, DeepL).",
   "type": "craft-plugin",
   "keywords": ["ai", "craft", "cp", "helpers", "claude", "chatgpt", "deepl"],
   "authors": [
     {
-      "name": "Bohdan Valeshynskyi",
-      "homepage": "https://www.sturmundbraem.ch"
-    },
-    {
-      "name": "Aram Loosman",
-      "homepage": "https://www.sturmundbraem.ch"
-    },
-    {
-      "name": "Urs Bräm",
+      "name": "STURM UND BRÄM",
       "homepage": "https://www.sturmundbraem.ch"
     }
   ],
   "support": {
-    "email": "suppor@sturmundbraem.ch"
+    "email": "support@sturmundbraem.ch"
   },
   "require": {
     "craftcms/cms": "^4.0.0 || ^5.0.0"
@@ -29,7 +21,7 @@
     }
   },
   "extra": {
-    "name": "Craft CP AI",
-    "handle": "craft-cp-ai"
+    "name": "Loki",
+    "handle": "loki"
   }
 }

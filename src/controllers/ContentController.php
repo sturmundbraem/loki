@@ -11,7 +11,7 @@ use stubr\Plugin;
 class ContentController extends \craft\web\Controller
 {
     // This method handles POST requests from fieldHelper.js
-    // URL: craft-cp-ai/content/generate
+    // URL: loki/content/generate
     public function actionGenerate()
     {
         // Read the POST data sent by the JS fetch request
@@ -69,17 +69,24 @@ class ContentController extends \craft\web\Controller
 
         $site = Craft::$app->getSites()->getSiteById($siteId);
         $entryTitle = $liveValues['__title'] ?? $entry->title;
-        $prompt = Craft::$app->getView()->renderString($prompt, [
+
+        // Build a flat map handle => effective value for Twig substitution.
+        // Uses liveValues (current unsaved edits) where present, falls back to DB values.
+        $effectiveValues = [];
+        foreach ($fieldValues as $handle => $value) {
+            $effectiveValues[$handle] = $liveValues[$handle] ?? (string)$value;
+        }
+
+        //list of twig variables for easier prompt writing
+        $twigVars = [
             'siteLang' => $site->language,
             'fieldHandle' => $fieldHandle,
             'entryTitle' => $entryTitle,
-        ]);
-
-        $basePrompt = Craft::$app->getView()->renderString($basePrompt, [
-            'siteLang' => $site->language,
-            'fieldHandle' => $fieldHandle,
-            'entryTitle' => $entry->title,
-        ]);
+            'fields' => $effectiveValues,
+        ];
+        
+        $prompt     = Craft::$app->getView()->renderString($prompt, $twigVars);
+        $basePrompt = Craft::$app->getView()->renderString($basePrompt, $twigVars);
 
         $fieldValues = $entry->getFieldValues();
         $context = 'Title: ' . $entryTitle . "\n";
@@ -98,37 +105,102 @@ class ContentController extends \craft\web\Controller
             return $this->asJson(['error' => $e->getMessage()]);
         }
         if ($createDraft === '1') {
-            // Create a draft copy of the entry (doesn't affect the live version)
-            $draft = Craft::$app->getDrafts()->createDraft($entry);
-
-            // Carry the user's unsaved edits into the draft so nothing they typed is lost
-            foreach ($liveValues as $handle => $value) {
-                if ($handle === '__title') {
-                    $draft->title = $value;
-                    continue;
-                }
-                // Skip anything that isn't a real field on this entry (defensive)
-                if (!$draft->getFieldLayout()->getFieldByHandle($handle)) {
-                    continue;
-                }
-                $draft->setFieldValue($handle, $value);
+            // Walk up to the root entry (handles Matrix-nested fields).
+            // For top-level fields, $rootEntry will equal $entry.
+            $rootEntry = $entry;
+            while ($rootEntry->getOwner()) {
+                $rootEntry = $rootEntry->getOwner();
             }
 
-            // Now write the AI-generated text into the target field (overrides any live value for it)
-            $draft->setFieldValue($fieldHandle, $generatedContent);
+            // Draft the root entry. Craft re-attaches its nested elements (matrix blocks)
+            // to the draft via elements_owners.
+            $draft = Craft::$app->getDrafts()->createDraft($rootEntry);
 
-            Craft::$app->getElements()->saveElement($draft);
+            // Re-fetch the draft so nested matrix relationships are loaded into memory.
+            // Without this, saveElement() can silently drop matrix associations.
+            $draft = Entry::find()
+                ->id($draft->id)
+                ->draftId($draft->draftId)
+                ->siteId($siteId)
+                ->status(null)
+                ->one();
+                
+            // Force matrix values to materialize so saveElement() doesn't write an empty matrix
+            foreach ($draft->getFieldLayout()->getCustomFields() as $field) {
+                if ($field instanceof \craft\fields\Matrix) {
+                    $draft->getFieldValue($field->handle)->all();
+                }
+            }
+
+            // The "target" inside the draft is either the draft itself (top-level case)
+            // or the matching block in the draft (matrix case).
+            $target = null;
+
+            if ($rootEntry->id === $entry->id) {
+                // Top-level: target is the draft entry itself
+                $target = $draft;
+            } else {
+                // Matrix sub-field: find the matching block within the draft by UID
+                foreach ($draft->getFieldLayout()->getCustomFields() as $field) {
+                    if (!($field instanceof \craft\fields\Matrix)) continue;
+                    $blocks = $draft->getFieldValue($field->handle)->all();
+                    foreach ($blocks as $b) {
+                        if ($b->uid === $entry->uid) {
+                            $target = $b;
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            if (!$target) {
+                return $this->asJson(['error' => 'Could not locate target element in the draft.'], 500);
+            }
+
+            // Apply the user's unsaved edits to the target
+            foreach ($liveValues as $handle => $value) {
+                if ($handle === '__title') {
+                    $target->title = $value;
+                    continue;
+                }
+                if (!$target->getFieldLayout()->getFieldByHandle($handle)) continue;
+                $target->setFieldValue($handle, $value);
+            }
+
+            // Apply the AI-generated content to the field the user clicked
+            $target->setFieldValue($fieldHandle, $generatedContent);
+
+            // Save the target (entry or block — both are saveable elements in Craft 5)
+            Craft::$app->getElements()->saveElement($target);
+
+            // Workaround: saveElement() on a draft entry wipes nested-element ownership
+            // rows that createDraft() had inserted. Re-link the matrix blocks to the draft
+            // from the canonical. Only needed when we saved the draft entry itself
+            // (top-level wand case); saving a block doesn't disturb the draft's matrix.
+            if ($target === $draft) {
+                $db = Craft::$app->getDb();
+                $db->createCommand()->delete('{{%elements_owners}}', ['ownerId' => $draft->id])->execute();
+                $db->createCommand(<<<SQL
+                    INSERT INTO {{%elements_owners}} ([[elementId]], [[ownerId]], [[sortOrder]])
+                    SELECT [[o.elementId]], :draftId, [[o.sortOrder]]
+                    FROM {{%elements_owners}} AS [[o]]
+                    WHERE [[o.ownerId]] = :canonicalId
+                SQL, [
+                    ':draftId' => $draft->id,
+                    ':canonicalId' => $rootEntry->id,
+                ])->execute();
+            }
 
 
-            // Return JSON response to the JS .then() callback
             return $this->asJson([
                 'draftId' => $draft->draftId,
                 'title' => $draft->title,
                 'generatedContent' => $generatedContent,
                 'fieldHandle' => $fieldHandle,
-                'draftUrl' => $draft->getCpEditUrl()
+                'draftUrl' => $draft->getCpEditUrl(),   // Always the root entry's draft URL
             ]);
-        }       
+        }
+            
         else {
             return $this->asJson([
                 'generatedContent' => $generatedContent,

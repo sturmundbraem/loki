@@ -10,6 +10,8 @@ class Settings extends Model
     public array $hiddenFields = [];
 
     public array $fieldAssignments = [];
+    
+    public array $fieldOrder = [];
 
     public string $openaiApiKey = '$OPENAI_API_KEY';
     public string $claudeApiKey = '$CLAUDE_API_KEY';

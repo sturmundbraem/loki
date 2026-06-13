@@ -62,17 +62,19 @@ document.addEventListener('click', function(event) {
         }
 
         var prompts = {};
-        // First check if this specific field has assigned prompts
-        if (aiFieldAssignments[buttonField] && aiFieldAssignments[buttonField].length > 0) {
-            var assigned = aiFieldAssignments[buttonField];
-            for (var i = 0; i < assigned.length; i++) {
-                var key = assigned[i];
-                if (aiPrompts[key]) {
-                    prompts[key] = aiPrompts[key];
+        var matrixField = btn.dataset.matrixField;   // undefined on non-Matrix fields
+
+        var assignedSelf = aiFieldAssignments[buttonField] || [];
+        var assignedMatrix = matrixField ? (aiFieldAssignments[matrixField] || []) : [];
+        var assignedAll = assignedSelf.concat(assignedMatrix);
+
+        if (assignedAll.length > 0) {
+            assignedAll.forEach(function(uid) {
+                if (aiPrompts[uid]) {
+                    prompts[uid] = aiPrompts[uid];   // dedups by uid since same uid = same key
                 }
-            }
+            });
         } else {
-            // Fallback: show prompts based on field type (allPlainText / allCKEditor)
             for (var key in aiPrompts) {
                 var p = aiPrompts[key];
                 if (buttonType === 'PlainText' && p.allPlainText === '1') {
@@ -83,8 +85,6 @@ document.addEventListener('click', function(event) {
                 }
             }
         }
-
-
 
         // Create the dropdown menu container
         var menu = document.createElement('div');
@@ -117,17 +117,39 @@ document.addEventListener('click', function(event) {
 
         for (var promptKey in prompts) {
             var menuItem = document.createElement('button');
-            menuItem.type = 'button';              // Prevents form submission
+            menuItem.type = 'button';
+            menuItem.style.display = 'flex';
+            menuItem.style.justifyContent = 'space-between';
+            menuItem.style.alignItems = 'center';
+            menuItem.style.width = '100%';
+
+
             var labelText = prompts[promptKey].label;
             if (prompts[promptKey].createDraft === '1') {
                 labelText = labelText + ' (Draft)';
             }
-            menuItem.textContent = labelText;
+            var labelSpan = document.createElement('span');
+            labelSpan.textContent = labelText;
+            menuItem.appendChild(labelSpan);
+
+            var provider = prompts[promptKey].provider;
+            if (provider) {
+                var icon = document.createElement('img');
+                icon.src = aiIconBase + '/' + provider + '.svg';
+                icon.alt = provider;
+                icon.style.width = '16px';
+                icon.style.height = '16px';
+                icon.style.verticalAlign = 'middle';
+                icon.style.marginLeft = '6px';
+                menuItem.appendChild(icon);
+            }
+
             menuItem.dataset.prompt = prompts[promptKey].text;
             menuItem.dataset.provider = prompts[promptKey].provider;
             menuItem.dataset.createDraft = prompts[promptKey].createDraft;
             list.appendChild(menuItem);
         }
+
         menu.appendChild(list);
         // Position the dropdown menu right below the wand button
         // getBoundingClientRect() returns the button's position on screen
@@ -165,13 +187,33 @@ document.addEventListener('click', function(event) {
             e.stopPropagation();
             var item = e.target.closest('button');
             if (!item) return;
+
+            var clickedFieldContainer = btn.closest('.field');
+            var targetInput = clickedFieldContainer
+                ? clickedFieldContainer.querySelector('input[name*="fields"], textarea[name*="fields"]')
+                : null;
             
             var selectedPrompt = item.dataset.prompt;
             var selectedProvider = item.dataset.provider;
             var selectedCreateDraft = item.dataset.createDraft;
             var wandForm = btn.closest('form');
-            var entryIdInput = wandForm.querySelector('input[name="elementId"], input[name$="[elementId]"]');
-            var siteIdInput  = wandForm.querySelector('input[name="siteId"], input[name$="[siteId]"]');
+
+            var blockContainer = btn.closest('.matrixblock');
+
+            var elementId, siteId, liveScope;
+            if (blockContainer && blockContainer.dataset.id) {
+                // Blocks view: use the block's own entry ID + site, and scope live values to the block
+                elementId = blockContainer.dataset.id;
+                siteId    = blockContainer.dataset.siteId;
+                liveScope = blockContainer;
+            } else {
+                // Top-level field, or Cards-view slideout: use the form's inputs
+                var entryIdInput = wandForm.querySelector('input[name="elementId"], input[name$="[elementId]"]');
+                var siteIdInput  = wandForm.querySelector('input[name="siteId"], input[name$="[siteId]"]');
+                elementId = entryIdInput.value;
+                siteId    = siteIdInput.value;
+                liveScope = wandForm;
+            }
 
             document.querySelectorAll('.ai-wand-btn').forEach(function(b) { b.disabled = true; });
             
@@ -194,18 +236,26 @@ document.addEventListener('click', function(event) {
             }
             var liveValues = {};   
             // Grab whatever the user has currently typed (not yet saved to DB)
-            wandForm.querySelectorAll(
+            liveScope.querySelectorAll(
                 'input[name*="[fields]["], textarea[name*="[fields]["], input[name^="fields["], textarea[name^="fields["]'
             ).forEach(function(el) {
-                // Catches both top-level `fields[handle]` and namespaced `xxxx[fields][handle]`
-                var m = el.name.match(/(?:^|[\[\]])fields\[([^\]]+)\]/);
-                if (m) liveValues[m[1]] = el.value;
+                // Skip inputs that belong to a DIFFERENT element scope.
+                // Top-level wand   → blockContainer is null, so we exclude anything inside any .matrixblock
+                // Block wand       → blockContainer is the block wrapper, so we exclude inputs in other blocks AND top-level inputs
+                if (el.closest('.matrixblock') !== blockContainer) return;
+
+                var matches = [...el.name.matchAll(/\[fields\]\[([^\]]+)\]|^fields\[([^\]]+)\]/g)];
+                var last = matches[matches.length - 1];
+                if (last) liveValues[last[1] || last[2]] = el.value;
             });
 
-            var titleInput = wandForm.querySelector('input[name="title"], input[name$="[title]"]');
+            var titleInput = liveScope.querySelector('input[name="title"], input[name$="[title]"]');
+            if (titleInput && titleInput.closest('.matrixblock') !== blockContainer) {
+                titleInput = null;   // belongs to a different scope
+            }
             if (titleInput) liveValues.__title = titleInput.value;
 
-            fetch(Craft.getActionUrl('craft-cp-ai/content/generate'), {
+            fetch(Craft.getActionUrl('loki/content/generate'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -213,9 +263,9 @@ document.addEventListener('click', function(event) {
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({
-                    entryId: entryIdInput.value,
+                    entryId: elementId,
                     provider: selectedProvider,
-                    siteId: siteIdInput.value,
+                    siteId: siteId,
                     fieldHandle: buttonField,
                     prompt: selectedPrompt,
                     createDraft: selectedCreateDraft,
@@ -238,21 +288,17 @@ document.addEventListener('click', function(event) {
                     Craft.cp.displayNotice('Draft created!');
                     window.location.href = data.draftUrl;
                 } else {
-                    var fieldEl = wandForm.querySelector('[name="fields[' + data.fieldHandle + ']"], [name$="[fields][' + data.fieldHandle + ']"]');
+                    // using the
+                    //  captured field - not its handle
+                    var fieldEl = targetInput;
 
-                    // CKEditor stores its instance on a .ck-editor__editable descendant of the
-                    // field container, not on the textarea. Search inside the field for one that
-                    // actually carries a ckeditorInstance.
-                    var editorInstance = fieldEl.ckeditorInstance;
-                    if (!editorInstance) {
-                        var fieldContainer = fieldEl.closest('.field');
-                        if (fieldContainer) {
-                            fieldContainer.querySelectorAll('.ck-editor__editable').forEach(function(el) {
-                                if (el.ckeditorInstance && !editorInstance) {
-                                    editorInstance = el.ckeditorInstance;
-                                }
-                            });
-                        }
+                    var editorInstance = fieldEl && fieldEl.ckeditorInstance;
+                    if (!editorInstance && clickedFieldContainer) {
+                        clickedFieldContainer.querySelectorAll('.ck-editor__editable').forEach(function(el) {
+                            if (el.ckeditorInstance && !editorInstance) {
+                                editorInstance = el.ckeditorInstance;
+                            }
+                        });
                     }
 
                     if (editorInstance) {
@@ -275,4 +321,3 @@ document.addEventListener('click', function(event) {
         });
     }
 });
-
