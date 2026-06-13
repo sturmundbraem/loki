@@ -2,8 +2,8 @@
 
 Your lowkey ai trickster for the Craft CMS 5 Control Panel. Adds AI text generation to field editing, and supports multiple LLM providers (OpenAI, Anthropic, DeepL)..
 
-Important: The plugin handle is "loki"
-This handle is needed for cli tasks e.g. migrations `ddev exec php craft migrate/up --plugin=loki`
+Important: The plugin handle is "craft-loki"
+This handle is needed for cli tasks e.g. migrations `ddev exec php craft migrate/up --plugin=craft-loki`
 
 ## Installation
 
@@ -18,13 +18,13 @@ Add the repository to your composer.json
 "repositories":[
     {
         "type": "vcs",
-        "url" : "git@github.com:sturmundbraem/loki.git",
+        "url" : "git@github.com:sturmundbraem/craft-loki.git",
         "no-api": true
     }
 ]
 ```
 
-Run `ddev composer require stubr/loki`
+Run `ddev composer require stubr/craft-loki`
 
 Open the panel `ddev launch panel`, go to Settings -> Plugins and Install the Plugin.
 
@@ -85,4 +85,4 @@ Fields without specific assignments will fall back to prompts marked as "All Pla
 
 ## Updating
 
-To update to the newest version of this package use `ddev c update stubr/loki`
+To update to the newest version of this package use `ddev c update stubr/craft-loki`

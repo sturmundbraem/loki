@@ -9,7 +9,7 @@
 {% block content %}
     <form method="post" id="prompts-form">
         {{ csrfInput() }}
-        {{ actionInput('loki/prompts/save') }}
+        {{ actionInput('craft-loki/prompts/save') }}
         <h2>Define your custom AI prompts</h2>
         {{ forms.editableTable({
             id: 'prompts',

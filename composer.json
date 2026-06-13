@@ -1,5 +1,5 @@
 {
-  "name": "stubr/loki",
+  "name": "stubr/craft-loki",
   "description": "Your lowkey ai trickster for the Craft CMS 5 Control Panel. Adds AI text generation to field editing, and supports multiple LLM providers (OpenAI, Anthropic, DeepL).",
   "type": "craft-plugin",
   "keywords": ["ai", "craft", "cp", "helpers", "claude", "chatgpt", "deepl"],
@@ -22,6 +22,6 @@
   },
   "extra": {
     "name": "Loki",
-    "handle": "loki"
+    "handle": "craft-loki"
   }
 }

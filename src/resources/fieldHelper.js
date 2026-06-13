@@ -255,7 +255,7 @@ document.addEventListener('click', function(event) {
             }
             if (titleInput) liveValues.__title = titleInput.value;
 
-            fetch(Craft.getActionUrl('loki/content/generate'), {
+            fetch(Craft.getActionUrl('craft-loki/content/generate'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
