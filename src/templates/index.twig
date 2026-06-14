@@ -1,9 +1,12 @@
 {% extends "_layouts/cp" %}
 {% import '_includes/forms.twig' as forms %}
 {% set title = "AI Prompts" %}
+{% set readOnly = readOnly ?? not craft.app.config.general.allowAdminChanges %}
 
 {% block actionButton %}
-    <button type="submit" class="btn submit" form="prompts-form">Save prompt settings</button>
+    {% if not readOnly %}
+        <button type="submit" class="btn submit" form="prompts-form">Save prompt settings</button>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -32,6 +35,7 @@
         {{ forms.editableTable({
             id: 'prompts',
             name: 'prompts',
+            static: readOnly,
             cols: {
                 uid: {
                     heading: '',
@@ -45,7 +49,7 @@
                 label: {
                     heading: 'LABEL',
                     type: 'singleline',
-                },               
+                },
                 provider: {
                     heading: 'PROVIDER',
                     type: 'select',
@@ -64,8 +68,8 @@
             addRowLabel: 'ADD PROMPT',
             allowAdd: true,
             allowDelete: true,
-            allowReorder: true, 
-            }) 
+            allowReorder: true,
+            })
         }}
 
         <hr>
@@ -110,6 +114,12 @@
 
     <script>
         function readLivePrompts() {
+            if (readOnly) {
+                return Object.keys(allPrompts).map(function(uid) {
+                    return { uid: uid, label: allPrompts[uid].label };
+                });
+            }
+
             var list = [];
             document.querySelectorAll('#prompts > tbody > tr').forEach(function(tr) {
                 var uidInput = tr.querySelector('.uid-col textarea');
@@ -123,6 +133,7 @@
 
         var allPrompts = {{ promptsByUid|json_encode|raw }};
         var fieldAssignments = {{ fieldAssignments|json_encode|raw }};
+        var readOnly = {{ readOnly ? 'true' : 'false' }};
 
         document.querySelectorAll('.field-select-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -136,7 +147,7 @@
             // Save current checkboxes as hidden inputs before switching
             var currentChecked = container.querySelectorAll('input[type="checkbox"]:checked');
             var currentField = container.dataset.currentField;
-            if (currentField) {
+            if (!readOnly && currentField) {
                 var oldHidden = hiddenContainer.querySelectorAll('input[data-field="' + currentField + '"]');
                 oldHidden.forEach(function(el) { el.remove(); });
 
@@ -184,8 +195,9 @@
             var html = '';
             readLivePrompts().forEach(function(prompt) {
                 var checked = isChecked(prompt.uid) ? 'checked' : '';
+                var disabled = readOnly ? 'disabled' : '';
                 html += '<label style="display:block; margin-bottom:8px;">'
-                    + '<input type="checkbox" name="' + inputName + '" value="' + prompt.uid + '" ' + checked + '> '
+                    + '<input type="checkbox" name="' + inputName + '" value="' + prompt.uid + '" ' + checked + ' ' + disabled + '> '
                     + (prompt.label || '(unnamed)')
                     + '</label>';
             });
@@ -206,22 +218,24 @@
 
         serializeFieldOrder();   // pre-populate so a save without dragging still works
 
-        new Garnish.DragSort($('.field-list-item'), {
-            handle: '.move',
-            axis: Garnish.Y_AXIS,
-        });
-
-        new MutationObserver(function(mutations) {
-            mutations.forEach(function(m) {
-                m.addedNodes.forEach(function(node) {
-                    if (node.nodeType !== 1 || node.tagName !== 'TR') return;
-                    var uidInput = node.querySelector('.uid-col textarea, .uid-col input');
-                    if (uidInput && !uidInput.value) {
-                        uidInput.value = Craft.uuid();
-                    }
-                });
+        if (!readOnly) {
+            new Garnish.DragSort($('.field-list-item'), {
+                handle: '.move',
+                axis: Garnish.Y_AXIS,
             });
-        }).observe(document.querySelector('#prompts tbody'), { childList: true });
+
+            new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(node) {
+                        if (node.nodeType !== 1 || node.tagName !== 'TR') return;
+                        var uidInput = node.querySelector('.uid-col textarea, .uid-col input');
+                        if (uidInput && !uidInput.value) {
+                            uidInput.value = Craft.uuid();
+                        }
+                    });
+                });
+            }).observe(document.querySelector('#prompts tbody'), { childList: true });
+        }
 
         document.getElementById('prompts-form').addEventListener('submit', serializeFieldOrder);
     {% endjs %}
