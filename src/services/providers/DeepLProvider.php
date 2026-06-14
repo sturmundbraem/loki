@@ -17,8 +17,7 @@ class DeepLProvider implements LlmProviderInterface
             throw new \Exception('DeepL API key not configured');
         }
 
-        $parts = explode(' ', trim($prompt));
-        $targetLang = strtoupper(end($parts));
+        $targetLang = $prompt;
 
         preg_match('/' . $fieldHandle . ': (.+)/', $context, $matches);
         $textToTranslate = $matches[1] ?? '';

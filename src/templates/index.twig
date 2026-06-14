@@ -1,9 +1,12 @@
 {% extends "_layouts/cp" %}
 {% import '_includes/forms.twig' as forms %}
 {% set title = "AI Prompts" %}
+{% set readOnly = readOnly ?? not craft.app.config.general.allowAdminChanges %}
 
 {% block actionButton %}
-    <button type="submit" class="btn submit" form="prompts-form">Save prompt settings</button>
+    {% if not readOnly %}
+        <button type="submit" class="btn submit" form="prompts-form">Save prompt settings</button>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -11,9 +14,28 @@
         {{ csrfInput() }}
         {{ actionInput('craft-loki/prompts/save') }}
         <h2>Define your custom AI prompts</h2>
+        <div class="readable">
+            <blockquote class="note">
+                <p>
+                    DeepL prompts are sent as the API <code>target_lang</code> value. Use the exact syntax from
+                    <a href="https://developers.deepl.com/api-reference/translate#request-body-descriptions" target="_blank" rel="noopener">DeepL's Translate API docs</a>
+                    and
+                    <a href="https://developers.deepl.com/docs/getting-started/supported-languages" target="_blank" rel="noopener">supported languages list</a>,
+                    for example <code>DE</code>, <code>FR</code>, <code>IT</code>, or <code>EN-GB</code>.
+                </p>
+                <p>
+                    Prompt values support Twig before they are sent. Available variables: <code>{{ "{{ siteLang }}" }}</code>,
+                    <code>{{ "{{ fieldHandle }}" }}</code>, <code>{{ "{{ entryTitle }}" }}</code>, and
+                    <code>{{ "{{ fields.myFieldHandle }}" }}</code>. For DeepL, the rendered result must be a valid
+                    <code>target_lang</code> code, for example <code>{{ "{{ siteLang|upper }}" }}</code> if your site
+                    languages match DeepL's codes.
+                </p>
+            </blockquote>
+        </div>
         {{ forms.editableTable({
             id: 'prompts',
             name: 'prompts',
+            static: readOnly,
             cols: {
                 uid: {
                     heading: '',
@@ -27,7 +49,7 @@
                 label: {
                     heading: 'LABEL',
                     type: 'singleline',
-                },               
+                },
                 provider: {
                     heading: 'PROVIDER',
                     type: 'select',
@@ -46,8 +68,8 @@
             addRowLabel: 'ADD PROMPT',
             allowAdd: true,
             allowDelete: true,
-            allowReorder: true, 
-            }) 
+            allowReorder: true,
+            })
         }}
 
         <hr>
@@ -92,6 +114,12 @@
 
     <script>
         function readLivePrompts() {
+            if (readOnly) {
+                return Object.keys(allPrompts).map(function(uid) {
+                    return { uid: uid, label: allPrompts[uid].label };
+                });
+            }
+
             var list = [];
             document.querySelectorAll('#prompts > tbody > tr').forEach(function(tr) {
                 var uidInput = tr.querySelector('.uid-col textarea');
@@ -105,6 +133,7 @@
 
         var allPrompts = {{ promptsByUid|json_encode|raw }};
         var fieldAssignments = {{ fieldAssignments|json_encode|raw }};
+        var readOnly = {{ readOnly ? 'true' : 'false' }};
 
         document.querySelectorAll('.field-select-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -118,7 +147,7 @@
             // Save current checkboxes as hidden inputs before switching
             var currentChecked = container.querySelectorAll('input[type="checkbox"]:checked');
             var currentField = container.dataset.currentField;
-            if (currentField) {
+            if (!readOnly && currentField) {
                 var oldHidden = hiddenContainer.querySelectorAll('input[data-field="' + currentField + '"]');
                 oldHidden.forEach(function(el) { el.remove(); });
 
@@ -166,8 +195,9 @@
             var html = '';
             readLivePrompts().forEach(function(prompt) {
                 var checked = isChecked(prompt.uid) ? 'checked' : '';
+                var disabled = readOnly ? 'disabled' : '';
                 html += '<label style="display:block; margin-bottom:8px;">'
-                    + '<input type="checkbox" name="' + inputName + '" value="' + prompt.uid + '" ' + checked + '> '
+                    + '<input type="checkbox" name="' + inputName + '" value="' + prompt.uid + '" ' + checked + ' ' + disabled + '> '
                     + (prompt.label || '(unnamed)')
                     + '</label>';
             });
@@ -188,22 +218,24 @@
 
         serializeFieldOrder();   // pre-populate so a save without dragging still works
 
-        new Garnish.DragSort($('.field-list-item'), {
-            handle: '.move',
-            axis: Garnish.Y_AXIS,
-        });
-
-        new MutationObserver(function(mutations) {
-            mutations.forEach(function(m) {
-                m.addedNodes.forEach(function(node) {
-                    if (node.nodeType !== 1 || node.tagName !== 'TR') return;
-                    var uidInput = node.querySelector('.uid-col textarea, .uid-col input');
-                    if (uidInput && !uidInput.value) {
-                        uidInput.value = Craft.uuid();
-                    }
-                });
+        if (!readOnly) {
+            new Garnish.DragSort($('.field-list-item'), {
+                handle: '.move',
+                axis: Garnish.Y_AXIS,
             });
-        }).observe(document.querySelector('#prompts tbody'), { childList: true });
+
+            new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(node) {
+                        if (node.nodeType !== 1 || node.tagName !== 'TR') return;
+                        var uidInput = node.querySelector('.uid-col textarea, .uid-col input');
+                        if (uidInput && !uidInput.value) {
+                            uidInput.value = Craft.uuid();
+                        }
+                    });
+                });
+            }).observe(document.querySelector('#prompts tbody'), { childList: true });
+        }
 
         document.getElementById('prompts-form').addEventListener('submit', serializeFieldOrder);
     {% endjs %}

@@ -1,11 +1,25 @@
 // --- Position wand buttons (handles both initial load and AJAX-injected fields) ---
 function positionWandButton(btn) {
     if (btn.dataset.positioned === '1') return;     // skip already-placed buttons
-    var field = btn.closest('.field');
-    if (!field) return;
-    var heading = field.querySelector('.heading .flex-grow');
-    if (!heading) return;                            // some fields have a different heading layout — skip
-    heading.before(btn);
+    var wrapper = btn.closest('.ai-wand-wrapper');
+    var field = wrapper ? wrapper.closest('.field') : btn.closest('.field');
+    if (wrapper && field) {
+        var heading = null;
+        Array.prototype.forEach.call(field.children, function(child) {
+            if (!heading && child.classList && child.classList.contains('heading')) {
+                heading = child;
+            }
+        });
+        if (heading) {
+            var spacer = heading.querySelector('.flex-grow');
+            if (spacer) {
+                spacer.before(wrapper);
+            } else {
+                heading.appendChild(wrapper);
+            }
+            wrapper.classList.add('is-positioned');
+        }
+    }
     btn.style.display = '';
     btn.dataset.positioned = '1';
 }
@@ -14,10 +28,50 @@ function positionAllWands(root) {
     (root || document).querySelectorAll('.ai-wand-btn').forEach(positionWandButton);
 }
 
+function enabledFlag(value) {
+    return value === true || value === 1 || value === '1';
+}
+
+function hasAllPlainTextPrompts() {
+    if (typeof aiPrompts === 'undefined') return false;
+    for (var key in aiPrompts) {
+        if (enabledFlag(aiPrompts[key].allPlainText)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function addNativeTitleWand(root) {
+    if (!hasAllPlainTextPrompts()) return;
+    (root || document).querySelectorAll('input[name="title"], input[name$="[title]"]').forEach(function(input) {
+        var field = input.closest('.field');
+        if (!field || field.querySelector('.ai-wand-btn[data-field="title"]')) return;
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'ai-wand-wrapper';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ai-wand-btn btn small icon';
+        btn.dataset.icon = 'wand-magic-sparkles';
+        btn.dataset.field = 'title';
+        btn.dataset.type = 'PlainText';
+
+        wrapper.appendChild(btn);
+        field.appendChild(wrapper);
+        positionWandButton(btn);
+    });
+}
+
 // Position any wand buttons already in the DOM
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { positionAllWands(); });
+    document.addEventListener('DOMContentLoaded', function() {
+        addNativeTitleWand();
+        positionAllWands();
+    });
 } else {
+    addNativeTitleWand();
     positionAllWands();
 }
 
@@ -29,6 +83,7 @@ new MutationObserver(function(mutations) {
             if (node.matches && node.matches('.ai-wand-btn')) {
                 positionWandButton(node);
             } else if (node.querySelectorAll) {
+                addNativeTitleWand(node);
                 node.querySelectorAll('.ai-wand-btn').forEach(positionWandButton);
             }
         });
@@ -77,10 +132,10 @@ document.addEventListener('click', function(event) {
         } else {
             for (var key in aiPrompts) {
                 var p = aiPrompts[key];
-                if (buttonType === 'PlainText' && p.allPlainText === '1') {
+                if (buttonType === 'PlainText' && enabledFlag(p.allPlainText)) {
                     prompts[key] = p;
                 }
-                if (buttonType === 'CKEditor' && p.allCKEditor === '1') {
+                if (buttonType === 'CKEditor' && enabledFlag(p.allCKEditor)) {
                     prompts[key] = p;
                 }
             }
@@ -144,6 +199,7 @@ document.addEventListener('click', function(event) {
                 menuItem.appendChild(icon);
             }
 
+            menuItem.dataset.promptUid = prompts[promptKey].uid || promptKey;
             menuItem.dataset.prompt = prompts[promptKey].text;
             menuItem.dataset.provider = prompts[promptKey].provider;
             menuItem.dataset.createDraft = prompts[promptKey].createDraft;
@@ -190,9 +246,10 @@ document.addEventListener('click', function(event) {
 
             var clickedFieldContainer = btn.closest('.field');
             var targetInput = clickedFieldContainer
-                ? clickedFieldContainer.querySelector('input[name*="fields"], textarea[name*="fields"]')
+                ? clickedFieldContainer.querySelector('input[name="title"], input[name$="[title]"], input[name*="fields"], textarea[name*="fields"]')
                 : null;
             
+            var selectedPromptUid = item.dataset.promptUid;
             var selectedPrompt = item.dataset.prompt;
             var selectedProvider = item.dataset.provider;
             var selectedCreateDraft = item.dataset.createDraft;
@@ -267,6 +324,7 @@ document.addEventListener('click', function(event) {
                     provider: selectedProvider,
                     siteId: siteId,
                     fieldHandle: buttonField,
+                    promptUid: selectedPromptUid,
                     prompt: selectedPrompt,
                     createDraft: selectedCreateDraft,
                     liveValues: liveValues,

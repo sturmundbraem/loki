@@ -20,6 +20,7 @@ class ContentController extends \craft\web\Controller
         $siteId = Craft::$app->getRequest()->getBodyParam('siteId');                // Which site/language
         $fieldHandle = Craft::$app->getRequest()->getBodyParam('fieldHandle');       // Which field to fill (e.g. "subtitle")
         $liveValues = Craft::$app->getRequest()->getBodyParam('liveValues', []);
+        $promptUid = Craft::$app->getRequest()->getBodyParam('promptUid');
         $prompt = Craft::$app->getRequest()->getBodyParam('prompt');                 // The AI prompt to use
         $provider = Craft::$app->getRequest()->getBodyParam('provider');            // Read provider from POST data
         $createDraft = Craft::$app->getRequest()->getBodyParam('createDraft');         
@@ -31,7 +32,7 @@ class ContentController extends \craft\web\Controller
         // }
         $matchedPrompt = null;
         foreach ($settings->prompts as $p) {
-            if ($p['text'] === $prompt) {
+            if (($promptUid && ($p['uid'] ?? null) === $promptUid) || (!$promptUid && ($p['text'] ?? null) === $prompt)) {
                 $matchedPrompt = $p;
                 break;
             }
@@ -39,10 +40,12 @@ class ContentController extends \craft\web\Controller
         if ($matchedPrompt === null) {
             return $this->asJson(['error' => 'Invalid prompt'], 400);
         }
+        $prompt = $matchedPrompt['text'] ?? '';
+        $provider = $matchedPrompt['provider'] ?? $provider;
         $basePrompt = $settings->basePrompt ?? '';
 
         $allowedProviders = ['openai', 'claude', 'deepl'];
-        if (!in_array($provider, $allowedProviders)) {
+        if (!in_array($provider, $allowedProviders, true)) {
             return $this->asJson(['error' => 'Invalid provider'], 400);
         }
 
@@ -63,16 +66,20 @@ class ContentController extends \craft\web\Controller
 
         // $this->requirePermission('edit-entries:' . $entry->section->uid);
 
-        if (!$entry->getFieldLayout()->getFieldByHandle($fieldHandle)) {
+        $isTitleField = $fieldHandle === 'title';
+        if (!$isTitleField && !$entry->getFieldLayout()->getFieldByHandle($fieldHandle)) {
             return $this->asJson(['error' => 'Invalid field'], 400);
         }
 
         $site = Craft::$app->getSites()->getSiteById($siteId);
         $entryTitle = $liveValues['__title'] ?? $entry->title;
+        $fieldValues = $entry->getFieldValues();
 
         // Build a flat map handle => effective value for Twig substitution.
         // Uses liveValues (current unsaved edits) where present, falls back to DB values.
-        $effectiveValues = [];
+        $effectiveValues = [
+            'title' => $entryTitle,
+        ];
         foreach ($fieldValues as $handle => $value) {
             $effectiveValues[$handle] = $liveValues[$handle] ?? (string)$value;
         }
@@ -88,7 +95,6 @@ class ContentController extends \craft\web\Controller
         $prompt     = Craft::$app->getView()->renderString($prompt, $twigVars);
         $basePrompt = Craft::$app->getView()->renderString($basePrompt, $twigVars);
 
-        $fieldValues = $entry->getFieldValues();
         $context = 'Title: ' . $entryTitle . "\n";
         foreach ($fieldValues as $handle => $value) {
             $effective = $liveValues[$handle] ?? (string)$value;
