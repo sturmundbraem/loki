@@ -144,6 +144,7 @@ document.addEventListener('click', function(event) {
                 menuItem.appendChild(icon);
             }
 
+            menuItem.dataset.promptUid = prompts[promptKey].uid || promptKey;
             menuItem.dataset.prompt = prompts[promptKey].text;
             menuItem.dataset.provider = prompts[promptKey].provider;
             menuItem.dataset.createDraft = prompts[promptKey].createDraft;
@@ -193,6 +194,7 @@ document.addEventListener('click', function(event) {
                 ? clickedFieldContainer.querySelector('input[name*="fields"], textarea[name*="fields"]')
                 : null;
             
+            var selectedPromptUid = item.dataset.promptUid;
             var selectedPrompt = item.dataset.prompt;
             var selectedProvider = item.dataset.provider;
             var selectedCreateDraft = item.dataset.createDraft;
@@ -267,6 +269,7 @@ document.addEventListener('click', function(event) {
                     provider: selectedProvider,
                     siteId: siteId,
                     fieldHandle: buttonField,
+                    promptUid: selectedPromptUid,
                     prompt: selectedPrompt,
                     createDraft: selectedCreateDraft,
                     liveValues: liveValues,
