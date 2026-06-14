@@ -17,7 +17,35 @@ class Settings extends Model
     public string $claudeApiKey = '$CLAUDE_API_KEY';
     public string $deeplApiKey = '$DEEPL_API_KEY';
 
-    public array $prompts = [];
+    public array $prompts = [
+        [
+            'uid' => '3bb64867-266b-439d-a36c-a2d54da75fa4',
+            'text' => "Translate detected language to {{ siteLang }}: {{ siteLang|split('-')|first|upper }}",
+            'label' => 'Translate',
+            'provider' => 'deepl',
+            'createDraft' => '',
+            'allPlainText' => '1',
+            'allCKEditor' => '1',
+        ],
+        [
+            'uid' => 'e4bc07b5-4442-4859-afe7-884b65662e0c',
+            'text' => 'Correct syntax, spelling, and grammar',
+            'label' => 'Correct',
+            'provider' => 'openai',
+            'createDraft' => '',
+            'allPlainText' => '1',
+            'allCKEditor' => '1',
+        ],
+        [
+            'uid' => '807c5365-8771-4dec-b92b-53f080ebab05',
+            'text' => 'Shorten text to 3/4 length',
+            'label' => 'Shorten',
+            'provider' => 'openai',
+            'createDraft' => '',
+            'allPlainText' => '1',
+            'allCKEditor' => '1',
+        ],
+    ];
     public string $basePrompt = <<<TXT
     You are a CMS content generator. Output ONLY the requested text.
     Do not greet, do not introduce, do not explain.
