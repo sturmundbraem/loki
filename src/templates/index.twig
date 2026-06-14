@@ -22,11 +22,6 @@
                 <a href="https://developers.deepl.com/docs/getting-started/supported-languages" target="_blank" rel="noopener">supported languages list</a>,
                 for example <code>DE</code>, <code>FR</code>, <code>IT</code>, or <code>EN-GB</code>.
             </p>
-            <p>
-                Examples: <code>Translate detected language to German: DE</code>,
-                <code>Translate detected language to German (DE-CH): DE</code>,
-                <code>Translate detected language to {{ "{{ siteLang }}" }}: {{ "{{ siteLang|split('-')|first|upper }}" }}</code>.
-            </p>
         </div>
         {{ forms.editableTable({
             id: 'prompts',
@@ -233,6 +228,23 @@
 
         serializeFieldOrder();   // pre-populate so a save without dragging still works
 
+        function updatePromptPlaceholder(row) {
+            if (!row) return;
+            var providerSelect = row.querySelector('select[name$="[provider]"]');
+            var promptInput = row.querySelector('textarea[name$="[text]"]');
+            if (!providerSelect || !promptInput) return;
+
+            promptInput.placeholder = providerSelect.value === 'deepl' ? 'DeepL: only add target_lang' : '';
+        }
+
+        document.querySelectorAll('#prompts tbody tr').forEach(updatePromptPlaceholder);
+
+        document.getElementById('prompts').addEventListener('change', function(event) {
+            if (event.target.matches('select[name$="[provider]"]')) {
+                updatePromptPlaceholder(event.target.closest('tr'));
+            }
+        });
+
         if (!readOnly) {
             new Garnish.DragSort($('.field-list-item'), {
                 handle: '.move',
@@ -247,6 +259,7 @@
                         if (uidInput && !uidInput.value) {
                             uidInput.value = Craft.uuid();
                         }
+                        updatePromptPlaceholder(node);
                     });
                 });
             }).observe(document.querySelector('#prompts tbody'), { childList: true });
