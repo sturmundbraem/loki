@@ -66,7 +66,8 @@ class ContentController extends \craft\web\Controller
 
         // $this->requirePermission('edit-entries:' . $entry->section->uid);
 
-        if (!$entry->getFieldLayout()->getFieldByHandle($fieldHandle)) {
+        $isTitleField = $fieldHandle === 'title';
+        if (!$isTitleField && !$entry->getFieldLayout()->getFieldByHandle($fieldHandle)) {
             return $this->asJson(['error' => 'Invalid field'], 400);
         }
 
@@ -76,7 +77,9 @@ class ContentController extends \craft\web\Controller
 
         // Build a flat map handle => effective value for Twig substitution.
         // Uses liveValues (current unsaved edits) where present, falls back to DB values.
-        $effectiveValues = [];
+        $effectiveValues = [
+            'title' => $entryTitle,
+        ];
         foreach ($fieldValues as $handle => $value) {
             $effectiveValues[$handle] = $liveValues[$handle] ?? (string)$value;
         }

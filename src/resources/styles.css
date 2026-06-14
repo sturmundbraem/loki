@@ -8,6 +8,19 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
+.ai-wand-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.heading > .ai-wand-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0 0 0 6px;
+}
+
 /* Loading overlay shown over a field while the AI generates text.
    Position/size are set inline by JS via getBoundingClientRect(). */
 .ai-loading-overlay {

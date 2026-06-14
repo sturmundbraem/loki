@@ -152,7 +152,7 @@ class Plugin extends \craft\base\Plugin
                 if (!$hasPrompts) {
                     foreach ($prompts as $prompt) {
                         $flag = $fieldType === 'PlainText' ? 'allPlainText' : 'allCKEditor';
-                        if (($prompt[$flag] ?? '') === '1') {
+                        if (in_array($prompt[$flag] ?? null, ['1', 1, true], true)) {
                             $hasPrompts = true;
                             break;
                         }
@@ -164,7 +164,7 @@ class Plugin extends \craft\base\Plugin
 
                 // Append a wand button to the field's HTML
                 $matrixAttr = $matrixHandle ? ' data-matrix-field="' . $matrixHandle . '"' : '';
-                $event->html .= '<button type="button" class="ai-wand-btn btn small icon" data-icon="wand-magic-sparkles" data-field="' . $fieldHandle . '" data-type="' . $fieldType . '"' . $matrixAttr . ' style="display:none"></button>';
+                $event->html .= '<div class="ai-wand-wrapper"><button type="button" class="ai-wand-btn btn small icon" data-icon="wand-magic-sparkles" data-field="' . $fieldHandle . '" data-type="' . $fieldType . '"' . $matrixAttr . '></button></div>';
                 }
             }
         );
