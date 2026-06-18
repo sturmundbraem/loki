@@ -14,6 +14,7 @@ use craft\services\Plugins;
 // Plugin's own classes
 use stubr\models\Settings;
 use stubr\FieldHelperAsset;
+use stubr\services\PromptSettings;
 
 
 class Plugin extends \craft\base\Plugin
@@ -21,8 +22,10 @@ class Plugin extends \craft\base\Plugin
     // A reference to this plugin instance, accessible from anywhere via Plugin::$plugin
     public static $plugin;
 
+    private ?PromptSettings $_promptSettings = null;
+
     // Database schema version — increment when you change database structure
-    public string $schemaVersion = "1.0.1";
+    public string $schemaVersion = "1.0.2";
 
     // Show a settings page for this plugin in the CP
     public bool $hasCpSettings = true;
@@ -49,6 +52,11 @@ class Plugin extends \craft\base\Plugin
             ]
         );
 
+    }
+
+    public function getPromptSettings(): PromptSettings
+    {
+        return $this->_promptSettings ??= new PromptSettings();
     }
 
     public function getCpNavItem(): ?array
@@ -106,7 +114,8 @@ class Plugin extends \craft\base\Plugin
 
                 // Load the prompts config and inject it as a JS variable
                 // This makes the prompts available in the browser as window.aiPrompts
-                $prompts = self::$plugin->getSettings()->prompts;
+                $promptSettings = self::$plugin->getPromptSettings();
+                $prompts = $promptSettings->getPrompts();
                 $promptsByUid = [];
                 foreach ($prompts as $prompt) {
                     if (!empty($prompt['uid'])) {
@@ -115,7 +124,7 @@ class Plugin extends \craft\base\Plugin
                 }
                 Craft::$app->getView()->registerJs('var aiPrompts = ' . json_encode($promptsByUid) . ';', \yii\web\View::POS_HEAD);
 
-                $fieldAssignments = self::$plugin->getSettings()->fieldAssignments;
+                $fieldAssignments = $promptSettings->getFieldAssignments();
                 Craft::$app->getView()->registerJs('var aiFieldAssignments = ' . json_encode($fieldAssignments) . ';', \yii\web\View::POS_HEAD);
 
                 // Get the field's handle (e.g. "subtitle") and type (e.g. "PlainText")

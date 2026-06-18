@@ -1,7 +1,7 @@
 {% extends "_layouts/cp" %}
 {% import '_includes/forms.twig' as forms %}
 {% set title = "AI Prompts" %}
-{% set readOnly = readOnly ?? not craft.app.config.general.allowAdminChanges %}
+{% set readOnly = readOnly ?? false %}
 
 {% block contentNotice %}
     {% if readOnly %}

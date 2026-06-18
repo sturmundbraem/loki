@@ -25,13 +25,14 @@ class ContentController extends \craft\web\Controller
         $provider = Craft::$app->getRequest()->getBodyParam('provider');            // Read provider from POST data
         $createDraft = Craft::$app->getRequest()->getBodyParam('createDraft');         
         $settings = Plugin::$plugin->getSettings();
+        $prompts = Plugin::$plugin->getPromptSettings()->getPrompts();
 
-        // $validPrompts = array_column($settings->prompts, 'text');
+        // $validPrompts = array_column($prompts, 'text');
         // if (!in_array($prompt, $validPrompts)) {
         //     return $this->asJson(['error' => 'Invalid prompt'], 400);
         // }
         $matchedPrompt = null;
-        foreach ($settings->prompts as $p) {
+        foreach ($prompts as $p) {
             if (($promptUid && ($p['uid'] ?? null) === $promptUid) || (!$promptUid && ($p['text'] ?? null) === $prompt)) {
                 $matchedPrompt = $p;
                 break;

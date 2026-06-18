@@ -12,8 +12,10 @@ class PromptsController extends Controller{
     public function actionIndex()
     {
         $settings = Plugin::$plugin->getSettings();
-        $prompts = $settings->prompts;
-        $fieldAssignments = $settings->fieldAssignments;
+        $promptSettings = Plugin::$plugin->getPromptSettings();
+        $promptData = $promptSettings->getAll();
+        $prompts = $promptData['prompts'];
+        $fieldAssignments = $promptData['fieldAssignments'];
 
         // 1) Ensure every prompt has a UID (in-memory backfill)
         $indexToUid = [];
@@ -40,7 +42,7 @@ class PromptsController extends Controller{
         }
 
         $allFields = Craft::$app->getFields()->getAllFields();
-        $savedOrder = $settings->fieldOrder;
+        $savedOrder = $promptData['fieldOrder'];
         if (!empty($savedOrder)) {
             $positions = array_flip($savedOrder);
             usort($allFields, function ($a, $b) use ($positions) {
@@ -65,9 +67,10 @@ class PromptsController extends Controller{
         $this->requireAdmin();
 
         $request = Craft::$app->getRequest();
-        $settings = Plugin::$plugin->getSettings();
+        $promptSettings = Plugin::$plugin->getPromptSettings();
+        $promptData = $promptSettings->getAll();
         $prompts = $request->getBodyParam('prompts', []);
-        $fieldAssignments = $settings->fieldAssignments;
+        $fieldAssignments = $promptData['fieldAssignments'];
         $postedFieldAssignments = $request->getBodyParam('fieldAssignments', []);
         $touchedFields = $request->getBodyParam('fieldAssignmentsTouched', []);
         $fieldOrderJson = $request->getBodyParam('fieldOrder', '');
@@ -97,7 +100,7 @@ class PromptsController extends Controller{
         $plainTextKeys = $asArray($buckets['allPlainText'] ?? []);
         $ckEditorKeys = $asArray($buckets['allCKEditor'] ?? []);
         $existingPromptsByUid = [];
-        $existingPrompts = is_array($settings->prompts) ? $settings->prompts : [];
+        $existingPrompts = is_array($promptData['prompts']) ? $promptData['prompts'] : [];
         foreach ($existingPrompts as $existingPrompt) {
             if (!empty($existingPrompt['uid'])) {
                 $existingPromptsByUid[$existingPrompt['uid']] = $existingPrompt;
@@ -115,9 +118,7 @@ class PromptsController extends Controller{
                 : ($existingPrompt['allCKEditor'] ?? '');
         }
 
-        $settings->prompts = $prompts;
-
-        Craft::$app->getPlugins()->savePluginSettings(Plugin::$plugin, [
+        $promptSettings->saveAll([
             'prompts' => $prompts,
             'fieldAssignments' => $fieldAssignments,
             'fieldOrder' => $fieldOrder,
