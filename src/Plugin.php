@@ -62,7 +62,7 @@ class Plugin extends \craft\base\Plugin
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
-        $item['label'] = 'AI Prompts';
+        $item['label'] = 'Loki';
         $item['url'] = 'craft-loki/prompts';
         unset($item['icon']);
         $item['fontIcon'] = 'wand-magic-sparkles';

@@ -39,7 +39,7 @@ API keys can be set in two ways:
 
 ### Managing Prompts
 
-Go to the "AI Prompts" section in the CP sidebar. Here you can:
+Go to the "Loki" section in the CP sidebar. Here you can:
 
 - Add, edit, and remove prompts
 - Set which LLM provider each prompt uses (OpenAI, Claude, DeepL)
@@ -75,7 +75,7 @@ On any entry edit page, PlainText and CKEditor fields will show a magic wand but
 
 ### Prompt Management
 
-Prompts are managed through the "AI Prompts" CP section. They are stored in Craft's project config and automatically synced to `config/project/project.yaml`.
+Prompts are managed through the "Loki" CP section. They are stored in Craft's project config and automatically synced to `config/project/project.yaml`.
 
 ### Field Assignments
 
