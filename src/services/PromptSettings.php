@@ -7,6 +7,7 @@ use craft\base\Component;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 class PromptSettings extends Component
 {
@@ -164,7 +165,11 @@ class PromptSettings extends Component
     {
         $settings = Craft::$app->getProjectConfig()->get('plugins.craft-loki.settings') ?? [];
 
-        return is_array($settings) ? $settings : [];
+        if (!is_array($settings)) {
+            return [];
+        }
+
+        return ProjectConfigHelper::unpackAssociativeArrays($settings);
     }
 
     private function arrayValue(mixed $value, array $default = []): array
